@@ -54,6 +54,7 @@ static char week_text[] = "s00";
 static char zodiac_sign[] = "X"; 
 static char moon_sign[]   = " ";
 static char zodiac_text[] = "Xxxxxxxxxx"; 
+static char bio_text[] = "              ";
 static char msg_text[]  = "J+XX: 12345678901234567890";
 static char msg2_text[] = "J+XX: 12345678901234567890";
 static char msg3_text[] = "J+XX: 12345678901234567890";
@@ -156,11 +157,7 @@ void display_layers_mode(enum LayersMode _mode ) {
     layer_set_hidden(text_layer_get_layer(text_moon_layer),   false);        
     layer_set_hidden(text_layer_get_layer(text_bioname_layer), true);
   
-  };
-  
-  
-  
-  
+  };  
   
 };
 
@@ -181,7 +178,9 @@ void text_layers_update(struct tm *t) {
     //Set the TextLayer text
     text_layer_set_text(text_time_layer, time_text); 
     
-    if ((t->tm_min % 2)==0) display_layers_mode(BIO_mode); else display_layers_mode(ZOD_mode);
+    if (BIO_ARRAY_SIZE>0) {
+      if ((t->tm_min % 2)==0) display_layers_mode(BIO_mode); else display_layers_mode(ZOD_mode);
+    };
     
   };
 
@@ -249,7 +248,15 @@ void text_layers_update(struct tm *t) {
     // MOON
     moon_sign[0] = get_moon_phase_char(t);    
     text_layer_set_text(text_moon_layer, moon_sign);
+    
+    // BIO
+    if (BIO_ARRAY_SIZE>0) {
+      strncpy(bio_text, BioLookup[0].txt, sizeof(bio_text));
+      text_layer_set_text(text_bioname_layer, bio_text);
+    };
+    
    
+    
     // AGENDA
 
     text_layer_set_text_color(text_msg_layer, GColorWhite);
