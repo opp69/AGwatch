@@ -1,0 +1,51 @@
+{
+    "appKeys": {
+        "NETDL_BEGIN": 1768777473,
+        "NETDL_CHUNK_SIZE": 1768777475,
+        "NETDL_DATA": 1768777472,
+        "NETDL_END": 1768777474,
+        "NETDL_URL": 1768777476
+    },
+    "capabilities": [
+        "location",
+        "configurable"
+    ],
+    "companyName": "MayOneZ",
+    "longName": "AGwatch",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/menu_icon_mozwatch.png",
+                "menuIcon": true,
+                "name": "IMAGE_MENU_ICON",
+                "type": "png"
+            },
+            {
+                "characterRegex": "[0-1A-Z]",
+                "compatibility": "2.7",
+                "file": "fonts/moon_phases.ttf",
+                "name": "FONT_MOONPHASE_28",
+                "type": "font"
+            },
+            {
+                "characterRegex": "[A-L]",
+                "compatibility": "2.7",
+                "file": "fonts/Astro.ttf",
+                "name": "FONT_ZODIAC_28",
+                "type": "font"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "AGw",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "f6a2f94d-13af-4649-b341-26b1768e2c25",
+    "versionLabel": "4.1",
+    "watchapp": {
+        "watchface": true
+    }
+}
