@@ -31,14 +31,34 @@ TextLayer *text_time_layer;			// zone 2 de texte où l'heure sera affichée
 TextLayer *text_z_layer;        // zone 3
 TextLayer *text_moon_layer;
 TextLayer *text_zodiac_layer;
+
 TextLayer *text_bioname_layer;
+TextLayer *text_bioPHY_layer;
+TextLayer *text_bioEMO_layer;
+TextLayer *text_bioINT_layer;
 
 TextLayer *text_msg_layer;      // zone 4
 TextLayer *text_msg2_layer;
 TextLayer *text_msg3_layer;
 
 Layer *line_layer;
+Layer *biograph_layer;
 
+#ifdef PBL_COLOR
+  #define PHY_COLOR GColorMelon
+  #define INT_COLOR GColorCeleste  
+  #define EMO_COLOR GColorMintGreen    
+  #define BACK_ALLDAY_COLOR GColorBlack
+  #define BACK_7DAY_COLOR GColorOxfordBlue
+  #define BACK_1DAY_COLOR GColorBulgarianRose
+#else
+  #define PHY_COLOR GColorWhite  
+  #define INT_COLOR GColorWhite    
+  #define EMO_COLOR GColorWhite      
+  #define BACK_ALLDAY_COLOR GColorBlack
+  #define BACK_7DAY_COLOR GColorBlack
+  #define BACK_1DAY_COLOR GColorBlack  
+#endif
 
 
 static const char *day_names_fr[] = {"Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"};
@@ -55,6 +75,9 @@ static char zodiac_sign[] = "X";
 static char moon_sign[]   = " ";
 static char zodiac_text[] = "Xxxxxxxxxx"; 
 static char bio_text[] = "              ";
+static char bioPHY_text[] = "P:-100";
+static char bioEMO_text[] = "E:-100";
+static char bioINT_text[] = "I:-100";
 static char msg_text[]  = "J+XX: 12345678901234567890";
 static char msg2_text[] = "J+XX: 12345678901234567890";
 static char msg3_text[] = "J+XX: 12345678901234567890";
@@ -65,6 +88,8 @@ static enum SettingVibrate  { vibrate_NONE = 0, vibrate_12AM8PM, vibrate_8AMTO8P
 static char config_agurl[128];
 
 static enum LayersMode { ZOD_mode = 1, BIO_mode} layers_mode;
+
+int bio_deltaJ = 0;
 
 // PERSISTANT KEY TO STORE THE AGLINES
 #define KEY_AG_NBLINE   999
@@ -87,6 +112,39 @@ static bool myBTState;    // unknown
 #include "agenda.h"
 
 
+  
+void DrawBIOSin(GContext* ctx, int periode) {
+  int32_t y1;
+  int32_t y2; 
+  int i ;
+  for (i=0; i<44; i++) {
+    int32_t angle = (i/2+bio_deltaJ-14/2) *TRIG_MAX_ANGLE/periode;
+    y1 =-sin_lookup(angle) * 16 / TRIG_MAX_RATIO+17;
+    angle = ((i+1)/2+bio_deltaJ-14/2)*TRIG_MAX_ANGLE/periode;
+    y2 =-sin_lookup(angle) * 16 / TRIG_MAX_RATIO+17;   
+    graphics_draw_line(ctx, GPoint(i, y1), GPoint(i+1,y2));
+  } 
+  
+}
+  
+void biograph_layer_update_callback(Layer *me, GContext* ctx) {
+  
+  graphics_context_set_stroke_color(ctx, PHY_COLOR);
+  DrawBIOSin(ctx, 23);
+  
+  graphics_context_set_stroke_color(ctx, EMO_COLOR);
+  DrawBIOSin(ctx, 28);  
+ 
+  graphics_context_set_stroke_color(ctx, INT_COLOR);
+  DrawBIOSin(ctx, 33);  
+  
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  //graphics_draw_rect(ctx, GRect(0,0,44,35) );
+  graphics_draw_line(ctx, GPoint(0,17), GPoint(44,17));
+  graphics_draw_line(ctx, GPoint(14,0), GPoint(14, 35));                    
+ 
+}
+  
  //Initialise screen = 144 x 168
 void line_layer_update_callback(Layer *me, GContext* ctx) {
 
@@ -144,19 +202,26 @@ void line_layer_update_callback(Layer *me, GContext* ctx) {
 
 void display_layers_mode(enum LayersMode _mode ) {
   
-  
+  //_mode = BIO_mode;
   if (_mode == BIO_mode) {
     layer_set_hidden(text_layer_get_layer(text_zodiac_layer),   true);
     layer_set_hidden(text_layer_get_layer(text_z_layer),   true);    
     layer_set_hidden(text_layer_get_layer(text_moon_layer),   true);        
     layer_set_hidden(text_layer_get_layer(text_bioname_layer), false); 
+    layer_set_hidden(text_layer_get_layer(text_bioINT_layer), false);     
+    layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), false);         
+    layer_set_hidden(text_layer_get_layer(text_bioPHY_layer), false);           
+    layer_set_hidden(biograph_layer, false);               
   }
   else if (_mode == ZOD_mode) {
     layer_set_hidden(text_layer_get_layer(text_zodiac_layer),   false);
     layer_set_hidden(text_layer_get_layer(text_z_layer),   false);    
     layer_set_hidden(text_layer_get_layer(text_moon_layer),   false);        
     layer_set_hidden(text_layer_get_layer(text_bioname_layer), true);
-  
+    layer_set_hidden(text_layer_get_layer(text_bioINT_layer), true);     
+    layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), true);         
+    layer_set_hidden(text_layer_get_layer(text_bioPHY_layer), true);     
+    layer_set_hidden(biograph_layer, true);                 
   };  
   
 };
@@ -249,10 +314,60 @@ void text_layers_update(struct tm *t) {
     moon_sign[0] = get_moon_phase_char(t);    
     text_layer_set_text(text_moon_layer, moon_sign);
     
+    // COMPUTE JULIAN DAY  for TODAY
+    
+    
     // BIO
+    
     if (BIO_ARRAY_SIZE>0) {
       strncpy(bio_text, BioLookup[0].txt, sizeof(bio_text));
+    
+      struct tm bio_day;
+      bio_day.tm_mday = BioLookup[0].d;  
+      bio_day.tm_mon = BioLookup[0].m-1;
+      bio_day.tm_year = BioLookup[0].y;
+            
+      bio_deltaJ = tm2jd(t)-tm2jd(&bio_day);
+      
+#ifdef LOG_LEVEL_I
+      APP_LOG(APP_LOG_LEVEL_INFO, "jbio %i",  tm2jd(&bio_day)); 
+      APP_LOG(APP_LOG_LEVEL_INFO, "today %i",  tm2jd(t));       
+      APP_LOG(APP_LOG_LEVEL_INFO, "JOUR %i",  BioLookup[0].d); 
+      APP_LOG(APP_LOG_LEVEL_INFO, "MOIS %i",  BioLookup[0].m);       
+      APP_LOG(APP_LOG_LEVEL_INFO, "ANNEE %i",  BioLookup[0].y);             
+      APP_LOG(APP_LOG_LEVEL_INFO, "BIO DELTA %i", bio_deltaJ); 
+#endif
+      
       text_layer_set_text(text_bioname_layer, bio_text);
+   
+      int32_t angle = (bio_deltaJ % 23) *TRIG_MAX_ANGLE/23;
+      int bioval = sin_lookup(angle) * 100 / TRIG_MAX_RATIO;   
+      snprintf(bioPHY_text, 6, "P:%d", bioval);
+      if (bioval==0) 
+        text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
+      else
+        text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+      text_layer_set_text(text_bioINT_layer, bioINT_text);      
+      
+      angle = (bio_deltaJ % 28) *TRIG_MAX_ANGLE/28;
+      bioval = sin_lookup(angle) * 100 / TRIG_MAX_RATIO;   
+      snprintf(bioEMO_text, 6, "E:%d", bioval);      
+      if (bioval==0) 
+        text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
+      else
+        text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));      
+      text_layer_set_text(text_bioEMO_layer, bioEMO_text); 
+      
+      angle = (bio_deltaJ % 33) *TRIG_MAX_ANGLE/33;
+      bioval = sin_lookup(angle) * 100 / TRIG_MAX_RATIO;   
+      snprintf(bioINT_text, 6, "I:%d", bioval); 
+      if (bioval==0) 
+        text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
+      else
+        text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));      
+            
+      text_layer_set_text(text_bioPHY_layer, bioPHY_text);      
+
     };
     
    
@@ -317,16 +432,13 @@ void text_layers_update(struct tm *t) {
           #ifdef PBL_COLOR
           if (afound==0) {
             if (jdiff==0) {
-              window_set_background_color(s_main_window, GColorRed);
+              window_set_background_color(s_main_window, BACK_1DAY_COLOR);
             }
             else if (jdiff < 8) {
-              window_set_background_color(s_main_window, GColorBulgarianRose); 
-            }
-            else if (jdiff < 15) {
-              window_set_background_color(s_main_window, GColorOxfordBlue); 
-            }
+              window_set_background_color(s_main_window, BACK_7DAY_COLOR); 
+            }            
             else {
-              window_set_background_color(s_main_window, GColorBlack); 
+              window_set_background_color(s_main_window, BACK_ALLDAY_COLOR); 
             };
           }
           #endif
@@ -536,7 +648,7 @@ void parse_BIOLINES_fromPersist(void){
  
   int nbbioline = persist_read_int(KEY_BIO_NBLINE);
   #ifdef LOG_LEVEL_I
-  APP_LOG(APP_LOG_LEVEL_INFO, "PARSING BIO nblines=%i", nbagline);
+  APP_LOG(APP_LOG_LEVEL_INFO, "PARSING BIO nblines=%i", nbbioline);
   #endif
   
   if (BioLookup != NULL) {
@@ -557,7 +669,7 @@ void parse_BIOLINES_fromPersist(void){
     if (persist_exists(KEY_BIO_LINES+i)) {
       persist_read_string(KEY_BIO_LINES+i, bioline, sizeof(bioline));
       #ifdef LOG_LEVEL_I2
-      APP_LOG(APP_LOG_LEVEL_INFO, "PARSING BIO line index=%i, LINE=%s", i, agline);
+      APP_LOG(APP_LOG_LEVEL_INFO, "PARSING BIO line index=%i, LINE=%s", i, bioline);
       #endif
       if ((bioline[0]=='b') && (bioline[1]='=')) {
         //agline
@@ -676,11 +788,12 @@ void store_AGwFILE_toPersist(NetDownload *download) {
 void download_complete_handler(NetDownload *download) {
   #ifdef LOG_LEVEL_I
   APP_LOG(APP_LOG_LEVEL_INFO, "Loaded data %lu bytes", (unsigned long) download->length);
-  APP_LOG(APP_LOG_LEVEL_INFO, "Heap free is %lu bytes", heap_bytes_free());
+  APP_LOG(APP_LOG_LEVEL_INFO, "Heap free is %lu bytes", (unsigned long) heap_bytes_free());
   #endif
   
   store_AGwFILE_toPersist(download);
   parse_AGLINES_fromPersist();
+  parse_BIOLINES_fromPersist();
   
   free(download->data);
     
@@ -832,14 +945,48 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(text_moon_layer, GTextAlignmentCenter);
   layer_add_child(window_layer, text_layer_get_layer(text_moon_layer));
 
+  #define bioW 33
   // Biorythm Name
-  text_bioname_layer = text_layer_create(GRect(0, 75, 144, 35));
+  text_bioname_layer = text_layer_create(GRect(0, 70, bioW*3, 20));
   text_layer_set_text_color      (text_bioname_layer, GColorWhite);
   text_layer_set_background_color(text_bioname_layer, GColorClear);
-  text_layer_set_font(text_bioname_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24) );
+  text_layer_set_font(text_bioname_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18) );
   text_layer_set_text_alignment(text_bioname_layer, GTextAlignmentCenter);
   layer_set_hidden(text_layer_get_layer(text_bioname_layer), true);
   layer_add_child(window_layer, text_layer_get_layer(text_bioname_layer));  
+
+  text_bioPHY_layer = text_layer_create(GRect(0, 90, bioW, 14));
+  //text_bioPHY_layer = text_layer_create(GRect(0+bioW+bioW, 91-11-11, bioW, 14));
+  text_layer_set_text_color      (text_bioPHY_layer, PHY_COLOR);//bleu
+  text_layer_set_background_color(text_bioPHY_layer, GColorClear);  
+  text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
+  text_layer_set_text_alignment(text_bioPHY_layer, GTextAlignmentCenter);
+  layer_set_hidden(text_layer_get_layer(text_bioPHY_layer), true);
+  layer_add_child(window_layer, text_layer_get_layer(text_bioPHY_layer));  
+  
+  text_bioINT_layer = text_layer_create(GRect(0+bioW, 90, bioW, 14));
+  //text_bioINT_layer = text_layer_create(GRect(0+bioW+bioW, 91-11, bioW, 14));
+  text_layer_set_text_color      (text_bioINT_layer, INT_COLOR);
+  text_layer_set_background_color(text_bioINT_layer, GColorClear);
+  text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
+  text_layer_set_text_alignment(text_bioINT_layer, GTextAlignmentCenter);
+  layer_set_hidden(text_layer_get_layer(text_bioINT_layer), true);
+  layer_add_child(window_layer, text_layer_get_layer(text_bioINT_layer));  
+  
+  //text_bioEMO_layer = text_layer_create(GRect(0+bioW+bioW, 91, bioW, 14));
+  text_bioEMO_layer = text_layer_create(GRect(0+bioW+bioW, 90, bioW, 14));  
+  text_layer_set_text_color      (text_bioEMO_layer, EMO_COLOR);     
+  text_layer_set_background_color(text_bioEMO_layer, GColorClear);
+  text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
+  text_layer_set_text_alignment(text_bioEMO_layer, GTextAlignmentCenter);
+  layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), true);
+  layer_add_child(window_layer, text_layer_get_layer(text_bioEMO_layer));  
+  
+  biograph_layer = layer_create(GRect(100,72,44,35));
+  layer_set_hidden(biograph_layer, true);
+  layer_set_update_proc(biograph_layer, biograph_layer_update_callback);
+  layer_add_child(window_layer, biograph_layer);
+  
   
   
   //---------------------------------------------------------------------------
@@ -919,10 +1066,15 @@ static void main_window_load(Window *window) {
 
   if (persist_exists(KEY_AG_NBLINE)) {
     #ifdef LOG_LEVEL_I    
-    APP_LOG(APP_LOG_LEVEL_INFO, "AG_NBLINES Exist... trying to parse"); 
+    APP_LOG(APP_LOG_LEVEL_INFO, "AG_NBLINES Exists... trying to parse"); 
     #endif
     parse_AGLINES_fromPersist(); 
-   // set_Initial_Layers();
+  };    
+  if (persist_exists(KEY_BIO_NBLINE)) {
+    #ifdef LOG_LEVEL_I    
+    APP_LOG(APP_LOG_LEVEL_INFO, "BIO_NBLINES Exists... trying to parse"); 
+    #endif
+    parse_BIOLINES_fromPersist(); 
   };    
     //Set initial time so display isn't blank
   set_Initial_Layers();
@@ -943,11 +1095,15 @@ static void main_window_unload(Window *window) {
   APP_LOG(APP_LOG_LEVEL_INFO, "Destroying layers");  
   #endif  
   layer_destroy(line_layer);  
+  layer_destroy(biograph_layer) ;
   text_layer_destroy(text_msg3_layer);
   text_layer_destroy(text_msg2_layer);
   text_layer_destroy(text_msg_layer);
   
   text_layer_destroy(text_bioname_layer);
+  text_layer_destroy(text_bioINT_layer);
+  text_layer_destroy(text_bioPHY_layer);  
+  text_layer_destroy(text_bioEMO_layer);    
   
   text_layer_destroy(text_moon_layer);
   text_layer_destroy(text_zodiac_layer);
