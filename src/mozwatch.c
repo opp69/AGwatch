@@ -45,9 +45,9 @@ Layer *line_layer;
 Layer *biograph_layer;
 
 #ifdef PBL_COLOR
-  #define PHY_COLOR GColorMelon
-  #define INT_COLOR GColorCeleste  
-  #define EMO_COLOR GColorMintGreen    
+  #define PHY_COLOR GColorMelon  
+  #define EMO_COLOR GColorCeleste  
+  #define INT_COLOR GColorMintGreen      
   #define BACK_ALLDAY_COLOR GColorBlack
   #define BACK_7DAY_COLOR GColorOxfordBlue
   #define BACK_1DAY_COLOR GColorBulgarianRose
@@ -340,34 +340,9 @@ void text_layers_update(struct tm *t) {
       
       text_layer_set_text(text_bioname_layer, bio_text);
    
-      int32_t angle = (bio_deltaJ % 23) *TRIG_MAX_ANGLE/23;
-      int bioval = sin_lookup(angle) * 100 / TRIG_MAX_RATIO;   
-      snprintf(bioPHY_text, 6, "P:%d", bioval);
-      if (bioval==0) 
-        text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
-      else
-        text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-      text_layer_set_text(text_bioINT_layer, bioINT_text);      
-      
-      angle = (bio_deltaJ % 28) *TRIG_MAX_ANGLE/28;
-      bioval = sin_lookup(angle) * 100 / TRIG_MAX_RATIO;   
-      snprintf(bioEMO_text, 6, "E:%d", bioval);      
-      if (bioval==0) 
-        text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
-      else
-        text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));      
-      text_layer_set_text(text_bioEMO_layer, bioEMO_text); 
-      
-      angle = (bio_deltaJ % 33) *TRIG_MAX_ANGLE/33;
-      bioval = sin_lookup(angle) * 100 / TRIG_MAX_RATIO;   
-      snprintf(bioINT_text, 6, "I:%d", bioval); 
-      if (bioval==0) 
-        text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
-      else
-        text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));      
-            
-      text_layer_set_text(text_bioPHY_layer, bioPHY_text);      
-
+      set_biolayer(text_bioPHY_layer, 'P', bioPHY_text, get_biorythm(bio_deltaJ, 23), PHY_COLOR);            
+      set_biolayer(text_bioEMO_layer, 'E', bioEMO_text, get_biorythm(bio_deltaJ, 28), EMO_COLOR);
+      set_biolayer(text_bioINT_layer, 'I', bioINT_text, get_biorythm(bio_deltaJ, 33), INT_COLOR);              
     };
     
    
@@ -956,31 +931,29 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(text_bioname_layer));  
 
   text_bioPHY_layer = text_layer_create(GRect(0, 90, bioW, 14));
-  //text_bioPHY_layer = text_layer_create(GRect(0+bioW+bioW, 91-11-11, bioW, 14));
   text_layer_set_text_color      (text_bioPHY_layer, PHY_COLOR);//bleu
   text_layer_set_background_color(text_bioPHY_layer, GColorClear);  
   text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
   text_layer_set_text_alignment(text_bioPHY_layer, GTextAlignmentCenter);
   layer_set_hidden(text_layer_get_layer(text_bioPHY_layer), true);
   layer_add_child(window_layer, text_layer_get_layer(text_bioPHY_layer));  
-  
-  text_bioINT_layer = text_layer_create(GRect(0+bioW, 90, bioW, 14));
-  //text_bioINT_layer = text_layer_create(GRect(0+bioW+bioW, 91-11, bioW, 14));
-  text_layer_set_text_color      (text_bioINT_layer, INT_COLOR);
-  text_layer_set_background_color(text_bioINT_layer, GColorClear);
-  text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
-  text_layer_set_text_alignment(text_bioINT_layer, GTextAlignmentCenter);
-  layer_set_hidden(text_layer_get_layer(text_bioINT_layer), true);
-  layer_add_child(window_layer, text_layer_get_layer(text_bioINT_layer));  
-  
-  //text_bioEMO_layer = text_layer_create(GRect(0+bioW+bioW, 91, bioW, 14));
-  text_bioEMO_layer = text_layer_create(GRect(0+bioW+bioW, 90, bioW, 14));  
+   
+    
+  text_bioEMO_layer = text_layer_create(GRect(0+bioW, 90, bioW, 14));  
   text_layer_set_text_color      (text_bioEMO_layer, EMO_COLOR);     
   text_layer_set_background_color(text_bioEMO_layer, GColorClear);
   text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
   text_layer_set_text_alignment(text_bioEMO_layer, GTextAlignmentCenter);
   layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), true);
   layer_add_child(window_layer, text_layer_get_layer(text_bioEMO_layer));  
+  
+  text_bioINT_layer = text_layer_create(GRect(0+bioW+bioW, 90, bioW, 14));  
+  text_layer_set_text_color      (text_bioINT_layer, INT_COLOR);
+  text_layer_set_background_color(text_bioINT_layer, GColorClear);
+  text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
+  text_layer_set_text_alignment(text_bioINT_layer, GTextAlignmentCenter);
+  layer_set_hidden(text_layer_get_layer(text_bioINT_layer), true);
+  layer_add_child(window_layer, text_layer_get_layer(text_bioINT_layer));  
   
   biograph_layer = layer_create(GRect(100,72,44,35));
   layer_set_hidden(biograph_layer, true);

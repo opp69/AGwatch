@@ -171,6 +171,16 @@ static const char *NoceLookup_us[NOCE_ARRAY_SIZE] =
 static const int nbDaysM[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 
+int get_biorythm(int _bio_deltaJ, int _period)
+{
+  int32_t angle = (_bio_deltaJ % _period) *TRIG_MAX_ANGLE/_period;
+  int bval = sin_lookup(angle) * 100 / TRIG_MAX_RATIO;
+  if (bval>99) bval=99;
+  if (bval<-99) bval=-99;
+  return bval;
+}
+
+
 
 
 //return the zodiac

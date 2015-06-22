@@ -106,6 +106,28 @@ char* AGwLIN_get_string(char *agline, char prefix, char *res, uint32_t reslen){
 
 
 
+// BIORYTHM
+
+void set_biolayer(TextLayer * _bio_layer, char _bchar, char *_bio_text, int _bval, GColor _COLOR)
+{
+  snprintf(_bio_text, 6, "%c:%d", _bchar, _bval);
+  if (_bval==0) {
+    text_layer_set_font(_bio_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD)); 
+    text_layer_set_text_color      (_bio_layer, GColorBlack);
+    text_layer_set_background_color(_bio_layer, _COLOR);
+  } 
+  else if (abs(_bval)>95) {
+    text_layer_set_text_color      (_bio_layer, _COLOR);
+    text_layer_set_background_color(_bio_layer, GColorClear);      
+    text_layer_set_font(_bio_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
+  }
+  else {
+    text_layer_set_text_color      (_bio_layer, _COLOR);
+    text_layer_set_background_color(_bio_layer, GColorClear);      
+    text_layer_set_font(_bio_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+  }
+  text_layer_set_text(_bio_layer, _bio_text);      
+}
 
   
 /*
