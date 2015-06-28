@@ -110,7 +110,11 @@ char* AGwLIN_get_string(char *agline, char prefix, char *res, uint32_t reslen){
 
 void set_biolayer(TextLayer * _bio_layer, char _bchar, char *_bio_text, int _bval, GColor _COLOR)
 {
-  snprintf(_bio_text, 6, "%c:%d", _bchar, _bval);
+  if (_bval==100) snprintf(_bio_text, 6, "%c:++", _bchar);
+  else if (_bval==-100) snprintf(_bio_text, 6, "%c:--", _bchar);
+  else snprintf(_bio_text, 6, "%c:%d", _bchar, _bval);
+  
+  
   if (_bval==0) {
     text_layer_set_font(_bio_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD)); 
     text_layer_set_text_color      (_bio_layer, GColorBlack);

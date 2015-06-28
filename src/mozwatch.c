@@ -12,7 +12,7 @@
 */
   
 /*================================================================*/
-#define AGwVersion  "v4.20"
+#define AGwVersion  "v4.3"
 /*================================================================*/
   
   
@@ -23,7 +23,7 @@ Window *s_main_window;
 
 int firstrun = 1; // Variable to check for first run. 1 - YES. 0 - NO.
 
-TextLayer *text_date_layer;     // ZOne 1
+TextLayer *text_date_layer;     // zone 1
 TextLayer *text_week_layer;
 
 TextLayer *text_time_layer;			// zone 2 de texte où l'heure sera affichée
@@ -930,7 +930,7 @@ static void main_window_load(Window *window) {
   layer_set_hidden(text_layer_get_layer(text_bioname_layer), true);
   layer_add_child(window_layer, text_layer_get_layer(text_bioname_layer));  
 
-  text_bioPHY_layer = text_layer_create(GRect(0, 90, bioW, 14));
+  text_bioPHY_layer = text_layer_create(GRect(0, 90, bioW, 17));
   text_layer_set_text_color      (text_bioPHY_layer, PHY_COLOR);//bleu
   text_layer_set_background_color(text_bioPHY_layer, GColorClear);  
   text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
@@ -939,7 +939,7 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(text_bioPHY_layer));  
    
     
-  text_bioEMO_layer = text_layer_create(GRect(0+bioW, 90, bioW, 14));  
+  text_bioEMO_layer = text_layer_create(GRect(0+bioW, 90, bioW, 17));  
   text_layer_set_text_color      (text_bioEMO_layer, EMO_COLOR);     
   text_layer_set_background_color(text_bioEMO_layer, GColorClear);
   text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
@@ -947,7 +947,7 @@ static void main_window_load(Window *window) {
   layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), true);
   layer_add_child(window_layer, text_layer_get_layer(text_bioEMO_layer));  
   
-  text_bioINT_layer = text_layer_create(GRect(0+bioW+bioW, 90, bioW, 14));  
+  text_bioINT_layer = text_layer_create(GRect(0+bioW+bioW, 90, bioW, 17));  
   text_layer_set_text_color      (text_bioINT_layer, INT_COLOR);
   text_layer_set_background_color(text_bioINT_layer, GColorClear);
   text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
