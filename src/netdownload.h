@@ -20,7 +20,9 @@ typedef struct {
 } NetDownload;
 
 typedef void (*NetDownloadCallback)(NetDownload *image);
-typedef void (*TupleReceiveCallback)(const uint32_t key, const Tuple *new_tuple, void *context);
+
+//typedef void (*TupleReceiveCallback)(const uint32_t key, const Tuple *new_tuple, void *context);
+typedef void (*TupleReceiveCallback)(DictionaryIterator *iter, void *context);
 
 
 typedef struct {

@@ -4,7 +4,29 @@
         "NETDL_CHUNK_SIZE": 1768777475,
         "NETDL_DATA": 1768777472,
         "NETDL_END": 1768777474,
-        "NETDL_URL": 1768777476
+        "NETDL_URL": 1768777476,
+        "WX_CITYNAME": 1000013,
+        "WX_CLOUDS": 1000015,
+        "WX_CONDITION": 1000014,
+        "WX_DAY1_CONDITIONS": 1000021,
+        "WX_DAY1_TEMP_MAX": 1000023,
+        "WX_DAY1_TEMP_MIN": 1000022,
+        "WX_DAY1_TIME": 1000020,
+        "WX_DAY2_CONDITIONS": 1000031,
+        "WX_DAY2_TEMP_MAX": 1000033,
+        "WX_DAY2_TEMP_MIN": 1000032,
+        "WX_DAY2_TIME": 1000030,
+        "WX_GETWEATHER": 1000000,
+        "WX_H0_CONDITIONS": 1000040,
+        "WX_H12_CONDITIONS": 1000044,
+        "WX_H3_CONDITIONS": 1000041,
+        "WX_H6_CONDITIONS": 1000042,
+        "WX_H9_CONDITIONS": 1000043,
+        "WX_HUMIDITY": 1000011,
+        "WX_ICON": 1000012,
+        "WX_LATITUDE": 1000050,
+        "WX_LONGITUDE": 1000051,
+        "WX_TEMP100X": 1000010
     },
     "capabilities": [
         "location",
@@ -15,6 +37,21 @@
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "file": "data/noces_us.txt",
+                "name": "NOCES_US",
+                "type": "raw"
+            },
+            {
+                "file": "data/noces_fr.txt",
+                "name": "NOCES_FR",
+                "type": "raw"
+            },
+            {
+                "file": "fonts/weathericons-regular-webfont v1.3.ttf",
+                "name": "FONT_WEATHER_18",
+                "type": "font"
+            },
             {
                 "file": "images/menu_icon_mozwatch.png",
                 "menuIcon": true,
@@ -44,7 +81,7 @@
         "basalt"
     ],
     "uuid": "f6a2f94d-13af-4649-b341-26b1768e2c25",
-    "versionLabel": "4.2",
+    "versionLabel": "4.6",
     "watchapp": {
         "watchface": true
     }

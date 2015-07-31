@@ -28,7 +28,10 @@ void netdownload_initialize(NetDownloadCallback dlcallback, TupleReceiveCallback
   app_message_register_inbox_dropped(netdownload_dropped);
   app_message_register_outbox_sent(netdownload_out_success);
   app_message_register_outbox_failed(netdownload_out_failed);
+  
+  #ifdef LOG_LEVEL_I
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Max buffer sizes are in=%li / out=%li", app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  #endif
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 }
 
@@ -63,7 +66,7 @@ void netdownload_receive(DictionaryIterator *iter, void *context) {
   
   Tuple *tuple = dict_read_first(iter);
   if (!tuple) {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "Got a message with no first key! Size of message: %li", (uint32_t)iter->end - (uint32_t)iter->dictionary);
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Got no first key! Size of message: %li", (uint32_t)iter->end - (uint32_t)iter->dictionary);
     return;
   }
   
@@ -79,7 +82,9 @@ void netdownload_receive(DictionaryIterator *iter, void *context) {
       }
       break;
     case NETDL_BEGIN:
+      #ifdef LOG_LEVEL_I
       APP_LOG(APP_LOG_LEVEL_DEBUG, "Start transmission. Size=%lu", tuple->value->uint32);
+      #endif
       if (ctx->data != NULL) {
         free(ctx->data);
       }
@@ -89,7 +94,7 @@ void netdownload_receive(DictionaryIterator *iter, void *context) {
         ctx->index = 0;
       }
       else {
-        APP_LOG(APP_LOG_LEVEL_WARNING, "Unable to allocate memory to receive image.");
+        APP_LOG(APP_LOG_LEVEL_WARNING, "Unable to allocate %lu memory to receive data", tuple->value->uint32);
         ctx->length = 0;
         ctx->index = 0;
       }
@@ -111,21 +116,24 @@ void netdownload_receive(DictionaryIterator *iter, void *context) {
         ctx->index = ctx->length = 0;
       }
       else {
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "Got End message but we have no image...");
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "Got End message but no data...");
       }
       break;
     default:
-      while (tuple) {
-        #ifdef LOG_LEVEL_I
-        APP_LOG(APP_LOG_LEVEL_INFO, "USER Key. Calling tupple_callback for key=%lu", tuple->key);
-        #endif
-        ctx->tuple_callback(tuple->key, tuple, context);
-        tuple = dict_read_next(iter);
-      }
+      //while (tuple) {
+      //  #ifdef LOG_LEVEL_I
+      //  APP_LOG(APP_LOG_LEVEL_INFO, "USER Key. Calling tupple_callback for key=%lu", tuple->key);
+      //  #endif
+      //  ctx->tuple_callback(tuple->key, tuple, context);
+      //tuple = dict_read_next(iter);
+      //
+      ctx->tuple_callback(iter, context);
       break;
   }
 }
 
+
+#ifdef LOG_LEVEL_I
 char *translate_error(AppMessageResult result) {
   switch (result) {
     case APP_MSG_OK: return "APP_MSG_OK";
@@ -145,15 +153,24 @@ char *translate_error(AppMessageResult result) {
     default: return "UNKNOWN ERROR";
   }
 }
+#endif
 
 void netdownload_dropped(AppMessageResult reason, void *context) {
-  APP_LOG(APP_LOG_LEVEL_ERROR, "Dropped message! Reason given: %s", translate_error(reason));
+#ifdef LOG_LEVEL_I  
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Dropped message! Reason= %s", translate_error(reason));  
+#else
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Dropped message!");
+#endif
 }
 
 void netdownload_out_success(DictionaryIterator *iter, void *context) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Message sent.");
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Message sent");
 }
 
 void netdownload_out_failed(DictionaryIterator *iter, AppMessageResult reason, void *context) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Failed to send message. Reason = %s", translate_error(reason));
+#ifdef LOG_LEVEL_I 
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Failed to send message. Reason= %s", translate_error(reason));  
+#else
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Failed to send message");
+#endif
 }

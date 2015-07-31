@@ -4,9 +4,12 @@
 // change this token for your project
 var setPebbleToken = '4YDG';
 var transferInProgress = false;
+var apikey = '&APPID=bc2db918b30a453fbc1c3be5cb99d5b7';
 
 Pebble.addEventListener('ready', function(e) {
-  console.log('PebbleKit JS ready!');
+  console.log('PebbleKit JS ready v1.14!');
+  
+  //getWeather();
 });
 
 Pebble.addEventListener('appmessage', function(e) {  
@@ -32,6 +35,10 @@ Pebble.addEventListener('appmessage', function(e) {
       console.log("Ignoring request to download " + e.payload['NETDL_URL'] + " because another download is in progress.");
     }
   }  
+  else if ('WX_GETWEATHER' in e.payload) {
+    console.log("PebbleKit JS message is GET_WEATHER");
+    getWeather();
+  }
   else {
     console.log("PebbleKit JS got a not handled appmessage: " + JSON.stringify(e.payload));    
   }
@@ -114,10 +121,10 @@ function downloadBinaryResource(imageURL, callback, errorCallback) {
         else {
           errorCallback("Request status is " + req.status);
         }
-    }
+    };
     req.onerror = function(e) {
       errorCallback(e);
-    }
+    };
     req.send(null);
 }
 
@@ -173,4 +180,145 @@ function transferImageBytes(bytes, chunkSize, successCb, failureCb) {
     }, failure);
 
 }
+
+
+var xhrRequest = function (url, type, callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.onload = function () {
+    callback(this.responseText);
+  };
+  xhr.open(type, url);
+  xhr.send();
+};
+
+function locationSuccess(pos) {
+  
+  var cityname = "";
+  var latitude = 0;
+  var temperature = 0;
+  var humidity = 0;
+  var condition = 0;
+  var wxicon = "";
+  var clouds = 0;
+  var day1Time = 0;
+  var day1TemperatureMin = 0;
+  var day1TemperatureMax = 0;
+
+  var day2Time = 0;
+  var day2TemperatureMin = 0;
+  var day2TemperatureMax = 0;
+      
+  //var d = new Date();
+  //console.log(d.toString()+' - Position Object TimeStamp='+pos.timestamp.toString());
+  
+  // Construct URL
+  var url = "http://api.openweathermap.org/data/2.5/weather?lat=" + pos.coords.latitude + "&lon=" + pos.coords.longitude+apikey;  
+  //var   url = "http://api.openweathermap.org/data/2.5/weather?lat=48.6598&lon=2.2681";
+  xhrRequest(url, 'GET', 
+    function(responseText) {
+      // responseText contains a JSON object with weather info
+      var json = JSON.parse(responseText);
+      
+      //console.log(JSON.stringify(json));
+      
+      cityname = json.name;
+      temperature = Math.round(json.main.temp*100);
+      humidity = Math.round(json.main.humidity);
+      condition = json.weather[0].id;      
+      wxicon = json.weather[0].icon;      
+      clouds = json.clouds.all;    
+      latitude = Math.round(pos.coords.latitude*100);
+                        
+      // Construct URL forecast
+      var dailyurl = "http://api.openweathermap.org/data/2.5/forecast/daily?lat=" + pos.coords.latitude + "&lon=" + pos.coords.longitude+apikey;  
+      //var dailyurl = "http://api.openweathermap.org/data/2.5/forecast/daily?lat=48.6598&lon=2.2681";  
+      // Send request to OpenWeatherMap
+      xhrRequest(dailyurl, 'GET', 
+        function(responseForecastText) {
+          // responseText contains a JSON object with weather info
+          var json = JSON.parse(responseForecastText);  
+          day1Time = json.list[0].dt;
+          //var day1Conditions = json.list[0].weather[0].id;      
+          day1TemperatureMin = Math.round(json.list[0].temp.min*100);
+          day1TemperatureMax = Math.round(json.list[0].temp.max*100);
+    
+          day2Time = json.list[1].dt;
+          //var day2Conditions = json.list[1].weather[0].id;      
+          day2TemperatureMin = Math.round(json.list[1].temp.min*100);
+          day2TemperatureMax = Math.round(json.list[1].temp.max*100);
+          
+          var forecasturl = "http://api.openweathermap.org/data/2.5/forecast?lat=" + pos.coords.latitude + "&lon=" + pos.coords.longitude+apikey;  
+          //var forecasturl = "http://api.openweathermap.org/data/2.5/forecast?lat=48.6598&lon=2.2681";  
+          // Send request to OpenWeatherMap
+          xhrRequest(forecasturl, 'GET', 
+            function(responseForecastText) {
+              // responseText contains a JSON object with weather info
+              var json = JSON.parse(responseForecastText);  
+              var H0Conditions  = json.list[0].weather[0].id;      
+              var H3Conditions  = json.list[1].weather[0].id;            
+              var H6Conditions  = json.list[2].weather[0].id;                  
+              var H9Conditions  = json.list[3].weather[0].id;                        
+              var H12Conditions = json.list[4].weather[0].id;                              
+                          
+               var dictionary = {   
+                "WX_LATITUDE": latitude, 
+                "WX_TEMP100X": temperature,
+                "WX_HUMIDITY": humidity,
+                "WX_ICON": wxicon,              
+                "WX_CITYNAME": cityname,
+                "WX_CONDITION": condition,
+                "WX_CLOUDS": clouds,
+                "WX_DAY1_TIME": day1Time,
+                //"WX_DAY1_CONDITIONS": day1Conditions,
+                "WX_DAY1_TEMP_MIN": day1TemperatureMin,
+                "WX_DAY1_TEMP_MAX": day1TemperatureMax,
+                "WX_DAY2_TIME": day2Time,
+                //"WX_DAY2_CONDITIONS": day2Conditions,
+                "WX_DAY2_TEMP_MIN": day2TemperatureMin,
+                "WX_DAY2_TEMP_MAX": day2TemperatureMax,
+                "WX_H0_CONDITIONS": H0Conditions,
+                "WX_H3_CONDITIONS": H3Conditions,         
+                "WX_H6_CONDITIONS": H6Conditions,                  
+                "WX_H9_CONDITIONS": H9Conditions,                           
+                "WX_H12_CONDITIONS": H12Conditions                                           
+               };
+              
+              Pebble.sendAppMessage(dictionary,
+                function(e) {
+                  var d = new Date();
+                  console.log(d.toString()+" --> URL "+url);
+                  console.log(d.toString()+" --> WX to Pebble successfully WX! "+JSON.stringify(dictionary));
+                },
+                function(e) {
+                  console.log("Error sending WX to Pebble!");
+                }
+              );
+            } // responseText
+          ); // xhrresquest
+          
+          
+        } // responseText
+      ); // xhrresquest
+          
+                  
+    } // responseText
+  );  // xhrrequest
+    
+}
+  
+  
+
+function locationError(err) {
+  console.log("Error requesting location for WX!");
+}
+
+
+function getWeather() {
+  navigator.geolocation.getCurrentPosition(
+    locationSuccess,
+    locationError,
+    {timeout: 15000, maximumAge: 30000} //, enableHighAccuracy: true}
+  );
+}
+
 

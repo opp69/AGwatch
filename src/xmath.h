@@ -9,80 +9,6 @@ static const int z_day[] = {20,20,21,20,21,21,23,24,23,23,22,22}; // Day of Zodi
 
 
 #define NOCE_ARRAY_SIZE 70
-static const char *NoceLookup_fr[NOCE_ARRAY_SIZE] =
-{
-  "néant", // 0,
-  "coton", // pour le premier anniversaire de mariage,
-  "cuir", //  pour 2 ans de mariage,
-  "froment", //  pour 3 ans de mariage,
-  "cire", //  pour 4 ans de mariage,
-  "bois", //  pour 5 ans de mariage,
-  "chypre", //  pour 6 ans de mariage,
-  "laine", //  pour 7 ans de mariage,
-  "coquelicot", //  pour 8 ans de mariage,
-  "faïence", //  pour 9 ans de mariage,
-  "étain", //  pour 10 ans de mariage,
-  "corail", //  pour 11 ans de mariage,
-  "soie", //  pour 12 ans de mariage,
-  "muguet", //  pour 13 ans de mariage,
-  "plomb", //  pour 14 ans de mariage,
-  "cristal", //  pour 15 ans de mariage,
-  "saphir", //  pour 16 ans de mariage,
-  "rose", //  pour 17 ans de mariage,
-  "turquoise", //  pour 18 ans de mariage,
-  "cretonne", //  pour 19 ans de mariage,
-  "porcelaine", //  pour 20 ans de mariage,
-  "opale", //  pour 21 ans de mariage,
-  "bronze", //  pour 22 ans de mariage,
-  "béryl", //  pour 23 ans de mariage,
-  "satin", //  pour 24 ans de mariage,
-  "argent", //  pour 25 ans de mariage,
-  "jade", //  pour 26 ans de mariage,
-  "acajou", //  pour 27 ans de mariage,
-  "nickel", //  pour 28 ans de mariage,
-  "velours", //  pour 29 ans de mariage,
-  "perle", //  pour 30 ans de mariage,
-  "basane", //  pour 31 ans de mariage,
-  "cuivre", //  pour 32 ans de mariage,
-  "porphyre", // pour 33 ans de mariage,
-  "ambre", // pour 34 ans de mariage,
-  "rubis", // pour 35 ans de mariage,
-  "mousseline", // pour 36 ans de mariage,
-  "papier", // pour 37 ans de mariage,
-  "mercure", // pour 38 ans de mariage,
-  "crêpe", // pour 39 ans de mariage,
-  "émeraude", // pour 40 ans de mariage.
-  "fer", //41 ans de mariage : 
-  "nacre", //42 ans de mariage
-  "flanelle", //43 ans de mariage
-  "topaze", //44 ans de mariage
-  "platine", //45 ans de mariage
-  "lavande", //46 ans de mariage
-  "cachemire", //47 ans de mariage
-  "améthyste", //48 ans de mariage
-  "cèdre", //49 ans de mariage
-  "or", //50 ans de mariage
-  "camélia", //51 ans de mariage
-  "tourmaline", //52 ans de mariage
-  "merisier", //53 ans de mariage
-  "zibeline", //54 ans de mariage
-  "d’orchidée", //55 ans de mariage
-  "lapis-lazuli", //56 ans de mariage
-  "azalée", //57 ans de mariage
-  "érable", //58 ans de mariage
-  "vison", //59 ans de mariage
-  "diamant", //60 ans de mariage
-  "platane", //61 ans de mariage
-  "ivoire", //62 ans de mariage
-  "lilas", //63 ans de mariage
-  "astrakan," //64 ans de mariage
-  "palissandre", //65 ans de mariage
-  "jasmin", //66 ans de mariage
-  "chinchilla", //67 ans de mariage
-  "granite", //68 ans de mariage
-  "mélèze", //69 ans de mariage
-  "platine" //70 ans de mariage
-};
 
 /* 75 ans de mariage : les noces d’albâtre,
 80 ans de mariage : les noces de chêne,
@@ -91,84 +17,49 @@ static const char *NoceLookup_fr[NOCE_ARRAY_SIZE] =
 100 ans de mariage : les noces d’eau.
 */
 
-static const char *NoceLookup_us[NOCE_ARRAY_SIZE] =
-{
-  "none", // 0,
-  "paper", // pour le premier anniversaire de mariage,
-  "cotton", //  pour 2 ans de mariage,
-  "leather", //  pour 3 ans de mariage,
-  "silk", //  pour 4 ans de mariage,
-  "wood", //  pour 5 ans de mariage,
-  "iron", //  pour 6 ans de mariage,
-  "wool", //  pour 7 ans de mariage,
-  "bronze", //  pour 8 ans de mariage,
-  "pottery", //  pour 9 ans de mariage,
-  "tin", //  pour 10 ans de mariage,
-  "steel", //  pour 11 ans de mariage,
-  "home decor", //  pour 12 ans de mariage,
-  "lace", //  pour 13 ans de mariage,
-  "ivory", //  pour 14 ans de mariage,
-  "crystal", //  pour 15 ans de mariage,
-  "16th", //  pour 16 ans de mariage,
-  "17th", //  pour 17 ans de mariage,
-  "18th", //  pour 18 ans de mariage,
-  "19th", //  pour 19 ans de mariage,
-  "china", //  pour 20 ans de mariage,
-  "21th", //  pour 21 ans de mariage,
-  "22th", //  pour 22 ans de mariage,
-  "23th", //  pour 23 ans de mariage,
-  "opal", //  pour 24 ans de mariage,
-  "silver", //  pour 25 ans de mariage,
-  "26th", //  pour 26 ans de mariage,
-  "27th", //  pour 27 ans de mariage,
-  "28th", //  pour 28 ans de mariage,
-  "29th", //  pour 29 ans de mariage,
-  "pearl", //  pour 30 ans de mariage,
-  "31th", //  pour 31 ans de mariage,
-  "32th", //  pour 32 ans de mariage,
-  "33th", // pour 33 ans de mariage,
-  "34th", // pour 34 ans de mariage,
-  "coral", // pour 35 ans de mariage,
-  "36th", // pour 36 ans de mariage,
-  "37th", // pour 37 ans de mariage,
-  "38th", // pour 38 ans de mariage,
-  "39th", // pour 39 ans de mariage,
-  "ruby", // pour 40 ans de mariage.
-  "41th", //41 ans de mariage : 
-  "42th", //42 ans de mariage
-  "43th", //43 ans de mariage
-  "44th", //44 ans de mariage
-  "saphire", //45 ans de mariage
-  "46th", //46 ans de mariage
-  "47th", //47 ans de mariage
-  "48th", //48 ans de mariage
-  "49th", //49 ans de mariage
-  "gold", //50 ans de mariage
-  "51th", //51 ans de mariage
-  "52th", //52 ans de mariage
-  "53th", //53 ans de mariage
-  "54th", //54 ans de mariage
-  "emerald", //55 ans de mariage
-  "56th", //56 ans de mariage
-  "57th", //57 ans de mariage
-  "58th", //58 ans de mariage
-  "59th", //59 ans de mariage
-  "diamond", //60 ans de mariage
-  "61th", //61 ans de mariage
-  "62th", //62 ans de mariage
-  "63th", //63 ans de mariage
-  "64th," //64 ans de mariage
-  "65th", //65 ans de mariage
-  "66th", //66 ans de mariage
-  "67th", //67 ans de mariage
-  "68th", //68 ans de mariage
-  "69th", //69 ans de mariage
-  "70th" //70 ans de mariage
-};
+
+void get_noce(enum SettingLanguage _lng, int _year, char *_buf) {
+  ResHandle rh;
+  switch (_lng) {
+    case language_FR:
+      rh = resource_get_handle(RESOURCE_ID_NOCES_FR);
+      break;
+    default:
+      rh = resource_get_handle(RESOURCE_ID_NOCES_US);    
+  }
+  resource_load_byte_range(rh, _year*32, (uint8_t*) _buf, 32-2);
+}
 
 
 
 static const int nbDaysM[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+
+int floor100(int _n) {
+  if (_n>=0) return _n /100;      // 101 --> 1
+  else       return (_n+99)/100;  // -101 --> -2
+}
+
+int ceil100(int _n) {
+  if (_n>=0) return (_n+99) /100;  // 101 --> 2
+  else       return _n/100;  // -101 --> -1
+}
+
+int round100(int _n) {
+  if (_n>=0) return (_n+50) /100;  // 101 --> 1
+  else       return (_n-50)/100;  // -101 --> -1
+}
+
+
+int kelvin100toTU(int _t, enum SettingTempUnit _unit) { 
+  switch (_unit) {
+    case tempunit_CELSIUS:
+      return (_t - 27315);
+    default:
+      return ((_t - 27315)*1.8+3200);
+  }
+}
+
 
 
 int get_biorythm(int _bio_deltaJ, int _period)

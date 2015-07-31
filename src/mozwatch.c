@@ -1,6 +1,7 @@
 #include <pebble.h>
-
-//#define LOG_LEVEL_I  
+  
+//#define WX_ONLY
+//#define LOG_LEVEL_I    
 //#define LOG_LEVEL_I2
   
   
@@ -12,8 +13,41 @@
 */
   
 /*================================================================*/
-#define AGwVersion  "v4.3"
+#define AGwVersion  "v4.5"
 /*================================================================*/
+    
+#ifdef PBL_COLOR
+  #define PHY_COLOR GColorMelon  
+  #define EMO_COLOR GColorCeleste  
+  #define INT_COLOR GColorMintGreen      
+  
+  #define BACK_ALLDAY_COLOR GColorBlack  
+  #define BACK_7DAY_COLOR GColorOxfordBlue
+  #define BACK_1DAY_COLOR GColorBulgarianRose
+  
+  #define LINE_ALLDAY_COLOR GColorInchworm //GColorRajah
+  #define LINE_7DAY_COLOR GColorPictonBlue   
+  #define LINE_1DAY_COLOR GColorSunsetOrange
+  
+  #define RAIN_COLOR GColorVividCerulean
+  #define SNOW_COLOR GColorFolly  
+  #define THUNDER_COLOR GColorYellow
+#else
+  #define PHY_COLOR GColorWhite  
+  #define INT_COLOR GColorWhite    
+  #define EMO_COLOR GColorWhite      
+  #define BACK_ALLDAY_COLOR GColorBlack
+  #define BACK_7DAY_COLOR GColorBlack
+  #define BACK_1DAY_COLOR GColorBlack
+
+  #define LINE_ALLDAY_COLOR GColorWhite
+  #define LINE_7DAY_COLOR GColorWhite
+  #define LINE_1DAY_COLOR GColorWhite  
+
+  #define RAIN_COLOR GColorWhite
+  #define SNOW_COLOR GColorWhite    
+  #define THUNDER_COLOR GColorWhite
+#endif  
   
   
 #include "xconfig.h"
@@ -28,37 +62,42 @@ TextLayer *text_week_layer;
 
 TextLayer *text_time_layer;			// zone 2 de texte où l'heure sera affichée
 
-TextLayer *text_z_layer;        // zone 3
-TextLayer *text_moon_layer;
+TextLayer *text_zodSIGN_layer;        // zone 3
+TextLayer *text_zodMOON_layer;
 TextLayer *text_zodiac_layer;
 
-TextLayer *text_bioname_layer;
+TextLayer *text_bioNAME_layer;
 TextLayer *text_bioPHY_layer;
 TextLayer *text_bioEMO_layer;
 TextLayer *text_bioINT_layer;
+
+TextLayer *text_wxCITY_layer;
+TextLayer *text_wxTEMP_layer;  
+#ifdef PBL_PLATFORM_BASALT
+TextLayer *text_wxICON_layer;  
+#endif
+TextLayer *text_wxINFO_layer;  
+
+
 
 TextLayer *text_msg_layer;      // zone 4
 TextLayer *text_msg2_layer;
 TextLayer *text_msg3_layer;
 
+TextLayer *ag_back_layer;
 Layer *line_layer;
 Layer *biograph_layer;
+Layer *graph_wxRAIN_layer;
 
-#ifdef PBL_COLOR
-  #define PHY_COLOR GColorMelon  
-  #define EMO_COLOR GColorCeleste  
-  #define INT_COLOR GColorMintGreen      
-  #define BACK_ALLDAY_COLOR GColorBlack
-  #define BACK_7DAY_COLOR GColorOxfordBlue
-  #define BACK_1DAY_COLOR GColorBulgarianRose
-#else
-  #define PHY_COLOR GColorWhite  
-  #define INT_COLOR GColorWhite    
-  #define EMO_COLOR GColorWhite      
-  #define BACK_ALLDAY_COLOR GColorBlack
-  #define BACK_7DAY_COLOR GColorBlack
-  #define BACK_1DAY_COLOR GColorBlack  
-#endif
+
+#define THRESHOLD_DAY7 8
+#define THRESHOLD_DAY1 2
+
+#define SECONDS_BETWEEN_WEATHER_UPDATES_NIGHT 3000
+#define SECONDS_BETWEEN_WEATHER_UPDATES_DAY 900  
+#define SECONDS_AFTER_WEATHER_UNVALID 6000
+#define SECONDS_AFTER_WEATHER_WARNING 180
+
 
 
 static const char *day_names_fr[] = {"Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"};
@@ -82,14 +121,49 @@ static char msg_text[]  = "J+XX: 12345678901234567890";
 static char msg2_text[] = "J+XX: 12345678901234567890";
 static char msg3_text[] = "J+XX: 12345678901234567890";
 
-enum KEY_Settings { KEY_LANGUAGE = 1, KEY_VIBRATE, KEY_AGURL };
+static char wxTemp_text[] = "---°";
+static char wxCity_text[] = "123456789012345";
+#ifdef PBL_PLATFORM_BASALT
+static char wxIcon_text[] = "\uf055";
+#endif
+static char wxInfo_text[] = "-13/-18° 100%";
+
+
+enum KEY_Settings { KEY_LANGUAGE = 1, KEY_VIBRATE, KEY_AGURL, KEY_TEMPUNIT };
 static enum SettingLanguage { language_FR = 0, language_US, language_count } config_language;
 static enum SettingVibrate  { vibrate_NONE = 0, vibrate_12AM8PM, vibrate_8AMTO8PM, vibrate_ALWAYS, vibrate_count } config_vibrate;
+static enum SettingTempUnit { tempunit_CELSIUS = 0, tempunit_FAHRENHEIT, tempunit_count } config_tempunit;
 static char config_agurl[128];
 
-static enum LayersMode { ZOD_mode = 1, BIO_mode} layers_mode;
+static enum LayersMode { ZOD_mode = 1, BIO_mode, WX_mode} layers_mode;
+int         layers_duration = 1;      // in Minutes
+
+time_t wxdata_timeOfLastResponse = 0;
+time_t wxdata_timeOfLastRequest = 0;
+int wxdata_temp100x = 0;
+int wxdata_humidity = 0;
+static char wxdata_city[30];
+int wxdata_condition = 0;
+int wxdata_clouds = 0;
+static char wxdata_icon[] = "000";
+
+int wxdata_day1time = 0;
+int wxdata_day1tempmin = 0;
+int wxdata_day1tempmax = 0;
+int wxdata_day2time = 0;
+int wxdata_day2tempmin = 0;
+int wxdata_day2tempmax = 0;
+
+int wxdata_h0conditions = 0;
+int wxdata_h3conditions = 0;
+int wxdata_h6conditions = 0;
+int wxdata_h9conditions = 0;
+int wxdata_h12conditions = 0;
+
+
 
 int bio_deltaJ = 0;
+int global_jdiff = 99;
 
 // PERSISTANT KEY TO STORE THE AGLINES
 #define KEY_AG_NBLINE   999
@@ -98,14 +172,37 @@ int bio_deltaJ = 0;
 #define KEY_BIO_NBLINE   1999
 #define KEY_BIO_LINES    KEY_BIO_NBLINE+1
 
+#define KEY_WX_GETWEATHER 1000000
+#define KEY_WX_TEMP100X   1000010
+#define KEY_WX_HUMIDITY  1000011 
+#define KEY_WX_ICON      1000012
+#define KEY_WX_CITYNAME  1000013
+#define KEY_WX_CONDITION 1000014
+#define KEY_WX_CLOUDS    1000015
+#define KEY_WX_DAY1_TIME   1000020
+#define KEY_WX_DAY1TEMPMIN 1000022
+#define KEY_WX_DAY1TEMPMAX 1000023
+#define KEY_WX_DAY2_TIME   1000030  
+#define KEY_WX_DAY2TEMPMIN 1000032
+#define KEY_WX_DAY2TEMPMAX 1000033
   
-
+#define KEY_WX_H0_CONDITIONS 1000040
+#define KEY_WX_H3_CONDITIONS 1000041  
+#define KEY_WX_H6_CONDITIONS 1000042
+#define KEY_WX_H9_CONDITIONS 1000043  
+#define KEY_WX_H12_CONDITIONS 1000044    
+  
+  
 //static enum SettingTimeFormat { timeformat_12 = 0, timeformat_24, timeformat_count } config_timeformat;
 //static AppSync s_sync;
 //static uint8_t s_sync_buffer[256];
 
 static BatteryChargeState myBatState;
-static bool myBTState;    // unknown
+static bool myBTState = false;    // unknown
+
+#define wxI_w 38
+#define wxT_w 40
+
 
 
 #include "xmath.h"
@@ -126,7 +223,8 @@ void DrawBIOSin(GContext* ctx, int periode) {
   } 
   
 }
-  
+ 
+
 void biograph_layer_update_callback(Layer *me, GContext* ctx) {
   
   graphics_context_set_stroke_color(ctx, PHY_COLOR);
@@ -145,6 +243,27 @@ void biograph_layer_update_callback(Layer *me, GContext* ctx) {
  
 }
   
+
+
+
+void graph_wxRAIN_layer_update_callback(Layer *me, GContext* ctx) {
+   
+  #ifdef LOG_LEVEL_I
+  APP_LOG(APP_LOG_LEVEL_INFO, "Rain Layer update");
+  #endif
+  if (wxdata_h0conditions!=0) {
+    draw_rain(ctx, 0 ,wxdata_h0conditions);
+    draw_rain(ctx, 1 ,wxdata_h3conditions);  
+    draw_rain(ctx, 2 ,wxdata_h6conditions);    
+    draw_rain(ctx, 3 ,wxdata_h9conditions);      
+    draw_rain(ctx, 4 ,wxdata_h12conditions);        
+  };
+  //graphics_context_set_stroke_color(ctx, LINE_1DAY_COLOR);
+  //graphics_context_set_fill_color(ctx, LINE_7DAY_COLOR);
+  //graphics_draw_rect(ctx, GRect(0,0, wxI_w, 7));
+}
+
+
  //Initialise screen = 144 x 168
 void line_layer_update_callback(Layer *me, GContext* ctx) {
 
@@ -152,10 +271,20 @@ void line_layer_update_callback(Layer *me, GContext* ctx) {
   APP_LOG(APP_LOG_LEVEL_INFO, "Line Layer update");
   #endif
   
+  if (global_jdiff < THRESHOLD_DAY1) {
+    graphics_context_set_stroke_color(ctx, LINE_1DAY_COLOR);
+  }
+  else if (global_jdiff < THRESHOLD_DAY7) {
+    graphics_context_set_stroke_color(ctx, LINE_7DAY_COLOR);
+  }
+  else {
+    graphics_context_set_stroke_color(ctx, LINE_ALLDAY_COLOR);
+  } 
+    
 #ifdef PBL_COLOR
-  graphics_context_set_stroke_color(ctx, GColorChromeYellow);
+  //graphics_context_set_stroke_color(ctx, GColorChromeYellow);
 #else
-  graphics_context_set_stroke_color(ctx, GColorWhite);
+  //graphics_context_set_stroke_color(ctx, GColorWhite);
 #endif
   
 
@@ -164,7 +293,7 @@ void line_layer_update_callback(Layer *me, GContext* ctx) {
 //  graphics_draw_line(ctx, GPoint(6, 59), GPoint(132, 59));
 
 #ifdef PBL_COLOR
-  graphics_context_set_stroke_color(ctx, GColorRajah);
+  //graphics_context_set_stroke_color(ctx, GColorRajah);
 #endif
   graphics_draw_line(ctx, GPoint(6, 70), GPoint(144-6, 70));
   graphics_draw_line(ctx, GPoint(6, 71), GPoint(144-6, 71));
@@ -202,30 +331,293 @@ void line_layer_update_callback(Layer *me, GContext* ctx) {
 
 void display_layers_mode(enum LayersMode _mode ) {
   
-  //_mode = BIO_mode;
-  if (_mode == BIO_mode) {
-    layer_set_hidden(text_layer_get_layer(text_zodiac_layer),   true);
-    layer_set_hidden(text_layer_get_layer(text_z_layer),   true);    
-    layer_set_hidden(text_layer_get_layer(text_moon_layer),   true);        
-    layer_set_hidden(text_layer_get_layer(text_bioname_layer), false); 
-    layer_set_hidden(text_layer_get_layer(text_bioINT_layer), false);     
-    layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), false);         
-    layer_set_hidden(text_layer_get_layer(text_bioPHY_layer), false);           
-    layer_set_hidden(biograph_layer, false);               
-  }
-  else if (_mode == ZOD_mode) {
-    layer_set_hidden(text_layer_get_layer(text_zodiac_layer),   false);
-    layer_set_hidden(text_layer_get_layer(text_z_layer),   false);    
-    layer_set_hidden(text_layer_get_layer(text_moon_layer),   false);        
-    layer_set_hidden(text_layer_get_layer(text_bioname_layer), true);
-    layer_set_hidden(text_layer_get_layer(text_bioINT_layer), true);     
-    layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), true);         
-    layer_set_hidden(text_layer_get_layer(text_bioPHY_layer), true);     
-    layer_set_hidden(biograph_layer, true);                 
-  };  
+  layer_set_hidden(text_layer_get_layer(text_zodiac_layer),   _mode != ZOD_mode);
+  layer_set_hidden(text_layer_get_layer(text_zodSIGN_layer),  _mode != ZOD_mode);    
+  layer_set_hidden(text_layer_get_layer(text_zodMOON_layer),  _mode != ZOD_mode);
+    
+  layer_set_hidden(text_layer_get_layer(text_bioNAME_layer),  _mode != BIO_mode); 
+  layer_set_hidden(text_layer_get_layer(text_bioINT_layer),   _mode != BIO_mode);     
+  layer_set_hidden(text_layer_get_layer(text_bioEMO_layer),   _mode != BIO_mode);         
+  layer_set_hidden(text_layer_get_layer(text_bioPHY_layer),   _mode != BIO_mode);           
+  layer_set_hidden(biograph_layer,                            _mode != BIO_mode);           
   
+  layer_set_hidden(text_layer_get_layer(text_wxCITY_layer),   _mode != WX_mode); 
+  layer_set_hidden(text_layer_get_layer(text_wxTEMP_layer),   _mode != WX_mode);     
+#ifdef PBL_PLATFORM_BASALT
+  layer_set_hidden(text_layer_get_layer(text_wxICON_layer),   _mode != WX_mode); 
+#endif  
+  layer_set_hidden(text_layer_get_layer(text_wxINFO_layer),   _mode != WX_mode);       
+  layer_set_hidden(graph_wxRAIN_layer,                        _mode != WX_mode);         
 };
 
+
+void request_weather() {    
+  #ifdef LOG_LEVEL_I
+    APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Request WX"); 
+  #endif
+  
+  if  (difftime(time(NULL), wxdata_timeOfLastRequest) > 100) {   // wait min 100 sec between
+    #ifdef LOG_LEVEL_I
+      APP_LOG(APP_LOG_LEVEL_INFO, "WX to old"); 
+    #endif
+    
+    wxdata_timeOfLastRequest = time(NULL);
+   
+    if (myBTState==true) {
+      APP_LOG(APP_LOG_LEVEL_INFO, "WX to old and BT Ok : Request to JS"); 
+    
+      DictionaryIterator *iter;
+      app_message_outbox_begin(&iter);
+      Tuplet value = TupletInteger(KEY_WX_GETWEATHER, 0);
+      dict_write_tuplet(iter, &value);
+      app_message_outbox_send();
+    }
+  }
+}
+
+
+void update_weathertext() {
+  
+  #ifdef LOG_LEVEL_I
+    APP_LOG(APP_LOG_LEVEL_INFO, "Updating WX text"); 
+  #endif
+    
+
+  int tempC = round100(kelvin100toTU(wxdata_temp100x, config_tempunit));
+    
+  snprintf(wxTemp_text, sizeof(wxTemp_text), "%d°",  tempC );
+  snprintf(wxCity_text, sizeof(wxCity_text), "%s",   wxdata_city );
+    
+ 
+  int d1tempmin = floor100(kelvin100toTU(wxdata_day1tempmin, config_tempunit));   // for rounding  
+  int d1tempmax = ceil100(kelvin100toTU(wxdata_day1tempmax, config_tempunit));  
+  int d2tempmin = floor100(kelvin100toTU(wxdata_day2tempmin, config_tempunit));
+  int d2tempmax = ceil100(kelvin100toTU(wxdata_day2tempmax, config_tempunit));
+  
+  #ifdef LOG_LEVEL_I2
+    APP_LOG(APP_LOG_LEVEL_INFO, "%d %d %d %d", d1tempmin, d1tempmax, d2tempmin, d2tempmax); 
+  #endif
+  
+  if (wxdata_day1time > 0) { 
+    // Forecast Response
+    time_t currentTime = time(NULL);
+    struct tm *currentCalendarTime = localtime(&currentTime);
+    int dayOfMonthCurrent = currentCalendarTime->tm_mday;
+      
+    time_t day1Date_t = wxdata_day1time;
+    struct tm *day1CalendarTime = localtime(&day1Date_t);
+    int dayOfMonth1 = day1CalendarTime->tm_mday;
+      
+    time_t day2Date_t = wxdata_day2time;
+    struct tm *day2CalendarTime = localtime(&day2Date_t);
+    int dayOfMonth2 = day2CalendarTime->tm_mday;
+      
+    if (dayOfMonthCurrent == dayOfMonth1) {     
+        snprintf(wxInfo_text, sizeof(wxInfo_text),"%d/%d° %d%%", d1tempmin, d1tempmax, wxdata_humidity);       
+
+      }
+      else if (dayOfMonthCurrent == dayOfMonth2) {
+        // Day 2 is Today's Date 
+        snprintf(wxInfo_text, sizeof(wxInfo_text),"%d/%d° %d%%", d2tempmin, d2tempmax, wxdata_humidity);      
+    }
+    else snprintf(wxInfo_text, sizeof(wxInfo_text),"?/?° %d%%", wxdata_humidity);
+  } // (day1Date > 0)
+  else snprintf(wxInfo_text, sizeof(wxInfo_text),"%d%%", wxdata_humidity);    
+  
+  #ifdef LOG_LEVEL_I2
+     APP_LOG(APP_LOG_LEVEL_INFO, "infotext= %s", wxInfo_text);
+  #endif
+  
+ // if (wxdata_day1tempmin==0) snprintf(wxInfo_text, sizeof(wxInfo_text),"%d%%", wxdata_humidity);  
+//else snprintf(wxInfo_text, sizeof(wxInfo_text),"%d/%d° %d%%", d1tempmin, d1tempmax, wxdata_humidity);
+#ifdef PBL_PLATFORM_BASALT  
+  bool isDay = true;
+  bool isCloudy = true;
+  if (strlen(wxdata_icon)>1 && wxdata_icon[strlen(wxdata_icon)-1]=='n') isDay = false;
+  if (wxdata_clouds<70) isCloudy = false;
+  
+  switch (wxdata_condition) {
+    case 200:
+    case 201:
+    case 202:
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf01e");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf010");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf02d");  
+      break;
+    case 210:
+    case 211:    
+      if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf005");  
+      else             snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf025");  
+      break;
+    case 212:
+    case 221:
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf016");  
+      break;
+    case 230:
+    case 231:
+    case 232:
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf01d");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00e");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf02c");  
+      break;
+    case 300:
+    case 301:
+    case 302:
+    case 310:
+    case 311:    
+    case 312:
+    case 313:
+    case 314:
+    case 321:
+     if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf01c");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00b");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf02b");  
+      break;
+    case 500:
+    case 501:
+    case 502:    
+    case 503:
+    case 504:    
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf019");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf008");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf028");  
+      break;
+     case 520:    
+     case 521:
+     case 522:
+     case 531: 
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf01a");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf009");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf029");  
+      break;    
+    //==================================================
+    case 600:  //snow
+    case 601:
+    case 602:
+    case 621:
+    case 622:
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf01b");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00a");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf02a");  
+      break; 
+    case 611: //Sleet
+    case 612:
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0b5");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0b2");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0b4");  
+      break; 
+    case 615: //Rain & snow
+    case 616:
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf017");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf006");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf026");  
+      break; 
+    //==================================================
+    case 701: // mist
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf014");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf003");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf04a");
+      break;
+    case 711: // smoke
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf062");
+      break;
+    //==================================================
+    case 800: // clear sky
+      if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00d");  
+      else             snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf02e");
+      break;
+    case 801: // few clouds 02d
+      if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00c");  
+      else             snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf083");
+      break;
+    case 802: // scatted clouds 03d
+      if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf002");  
+      else             snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf086");
+      break;
+    case 803: // broken clouds 04d
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf041");
+      break;
+    case 804: // overcast clouds 04d
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf013");
+      break;
+    //==================================================
+    case 900: // Tornado
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf056");
+      break;
+    case 901: // Tropical Storm
+    case 902: // Hurricane
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf073");
+      break;
+    case 903: // Cold
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf076");
+      break;            
+    case 904: // Hot
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf072");
+      break;        
+    case 905: // Windy
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf050");
+      break;         
+    case 906: // hail
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf015");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf004");  
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf024");  
+      break;
+    case 951: // Calm
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0b7");
+      break;         
+    case 952: // Light Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0b9");
+      break;         
+    case 953: // Calm Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0ba");
+      break;         
+    case 954: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0bb");
+      break;         
+    case 955: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0bc");
+      break;                
+    case 956: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0bd");
+      break;                
+    case 957: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0be");
+      break;                
+    case 958: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0bf");
+      break;                
+    case 959: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0c0");
+      break;                
+    case 960: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0c1");
+      break;                
+    case 961: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0c2");
+      break;                
+    case 962: // Moderate Breeze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0c3");
+      break;                
+            
+    
+    default:
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf055");  
+      snprintf(wxInfo_text, sizeof(wxInfo_text),"? %d %s", wxdata_condition, wxdata_icon);
+  }
+#endif
+ 
+}
+
+
+void SetLayerMode(enum LayersMode _mode) {
+  layers_mode = _mode;
+  switch (_mode) {
+    case WX_mode:
+      layers_duration=2;
+      break;  
+    default: layers_duration=1;
+  }
+};
 
 void text_layers_update(struct tm *t) {
 
@@ -240,13 +632,38 @@ void text_layers_update(struct tm *t) {
      memmove(time_text, &time_text[1], sizeof(time_text) - 1);			// en AM/PM 02:12 -> 2:13
     };
 
-    //Set the TextLayer text
+    // Set the TextLayer text
     text_layer_set_text(text_time_layer, time_text); 
     
-    if (BIO_ARRAY_SIZE>0) {
-      if ((t->tm_min % 2)==0) display_layers_mode(BIO_mode); else display_layers_mode(ZOD_mode);
+    
+    // LAYERS TOOGLES
+    layers_duration--;    
+    if (layers_duration<1) {
+      if (layers_mode==ZOD_mode) SetLayerMode(WX_mode);
+      else if (layers_mode==WX_mode) SetLayerMode(BIO_mode); 
+      else if (layers_mode==BIO_mode) SetLayerMode(ZOD_mode);
+    }
+    
+    // Change the mode if no data
+    if ((wxdata_timeOfLastResponse==0 || difftime(time(NULL), wxdata_timeOfLastResponse)>SECONDS_AFTER_WEATHER_UNVALID) 
+        && (layers_mode==WX_mode)) SetLayerMode(BIO_mode);
+    
+    if (difftime(wxdata_timeOfLastRequest, wxdata_timeOfLastResponse)>SECONDS_AFTER_WEATHER_WARNING) {
+      if (strlen(wxTemp_text)>0) wxTemp_text[strlen(wxTemp_text)-1]='!';
     };
     
+    if ((BIO_ARRAY_SIZE==0) && (layers_mode==BIO_mode)) SetLayerMode(ZOD_mode);   
+    if (firstrun ==1) SetLayerMode(ZOD_mode);      // always begin with ZOD_mode
+    
+    #ifdef WX_ONLY
+      SetLayerMode(WX_mode);      // DEBUG
+    #endif
+    
+    #ifdef LOG_LEVEL_I
+      APP_LOG(APP_LOG_LEVEL_INFO, "layers_duration %d",layers_duration); 
+    #endif
+    
+    display_layers_mode(layers_mode);        
   };
 
 
@@ -262,12 +679,25 @@ void text_layers_update(struct tm *t) {
         if (t->tm_hour == 12 || t->tm_hour == 20) vibes_double_pulse();
         break;
       case vibrate_8AMTO8PM:
-        if (t->tm_hour >= 8 || t->tm_hour <= 20) vibes_double_pulse();
+        if (t->tm_hour >= 8 && t->tm_hour <= 20) vibes_double_pulse();
         break;        
     }
   };
   
+  // Update weather
+  if ( (firstrun == 0) && (t->tm_sec == 0) &&
+     (difftime(time(NULL), wxdata_timeOfLastResponse)>
+        (t->tm_hour >= 6 && t->tm_hour <= 22 ? SECONDS_BETWEEN_WEATHER_UPDATES_DAY : SECONDS_BETWEEN_WEATHER_UPDATES_NIGHT) 
+     ) ) {
+    //vibes_short_pulse();
+    request_weather();              // dont request at firstrun because JS not ready    
+  };
 
+  #ifdef LOG_LEVEL_I2 
+  APP_LOG(APP_LOG_LEVEL_INFO, "wxINFOtext=%s", wxInfo_text);
+  #endif  
+
+  
   // Updated every day or firstrun
   if (t->tm_hour == 0 || firstrun == 1) {
 
@@ -299,7 +729,7 @@ void text_layers_update(struct tm *t) {
     // ZODIAC 
     int m = get_zodiac_int(t);
     strcpy(zodiac_sign, z_sign[m]);
-    text_layer_set_text(text_z_layer, zodiac_sign);
+    text_layer_set_text(text_zodSIGN_layer, zodiac_sign);
   
     if (config_language == language_FR) {
       strcpy(zodiac_text, zodiac_fr[m]); 
@@ -312,13 +742,10 @@ void text_layers_update(struct tm *t) {
 
     // MOON
     moon_sign[0] = get_moon_phase_char(t);    
-    text_layer_set_text(text_moon_layer, moon_sign);
+    text_layer_set_text(text_zodMOON_layer, moon_sign);
+        
     
-    // COMPUTE JULIAN DAY  for TODAY
-    
-    
-    // BIO
-    
+    // BIO    
     if (BIO_ARRAY_SIZE>0) {
       strncpy(bio_text, BioLookup[0].txt, sizeof(bio_text));
     
@@ -329,7 +756,7 @@ void text_layers_update(struct tm *t) {
             
       bio_deltaJ = tm2jd(t)-tm2jd(&bio_day);
       
-#ifdef LOG_LEVEL_I
+#ifdef LOG_LEVEL_I2
       APP_LOG(APP_LOG_LEVEL_INFO, "jbio %i",  tm2jd(&bio_day)); 
       APP_LOG(APP_LOG_LEVEL_INFO, "today %i",  tm2jd(t));       
       APP_LOG(APP_LOG_LEVEL_INFO, "JOUR %i",  BioLookup[0].d); 
@@ -338,7 +765,7 @@ void text_layers_update(struct tm *t) {
       APP_LOG(APP_LOG_LEVEL_INFO, "BIO DELTA %i", bio_deltaJ); 
 #endif
       
-      text_layer_set_text(text_bioname_layer, bio_text);
+      text_layer_set_text(text_bioNAME_layer, bio_text);
    
       set_biolayer(text_bioPHY_layer, 'P', bioPHY_text, get_biorythm(bio_deltaJ, 23), PHY_COLOR);            
       set_biolayer(text_bioEMO_layer, 'E', bioEMO_text, get_biorythm(bio_deltaJ, 28), EMO_COLOR);
@@ -346,9 +773,15 @@ void text_layers_update(struct tm *t) {
     };
     
    
-    
-    // AGENDA
+    // WX    
+    text_layer_set_text(text_wxTEMP_layer, wxTemp_text);    
+    text_layer_set_text(text_wxCITY_layer, wxCity_text);   
+    text_layer_set_text(text_wxINFO_layer, wxInfo_text);   
+#ifdef PBL_PLATFORM_BASALT
+    text_layer_set_text(text_wxICON_layer, wxIcon_text);       //\uf055
+#endif
 
+  // AGENDA
     text_layer_set_text_color(text_msg_layer, GColorWhite);
     text_layer_set_background_color(text_msg_layer, GColorClear); 
     text_layer_set_text_color(text_msg2_layer, GColorWhite);
@@ -361,6 +794,7 @@ void text_layers_update(struct tm *t) {
 
     int i = 0;
     char buf[20];
+    char NoceTmp[32];
     struct tm aTm;
 //    PblTm today;
 
@@ -373,6 +807,7 @@ void text_layers_update(struct tm *t) {
 
     int const NB_TEXTMSG = 3;
     int afound  = 0;
+    global_jdiff = 99;      // 
     while (afound<NB_TEXTMSG) {
 
       int jdiff = jcurdayTm-jtoday;
@@ -406,14 +841,18 @@ void text_layers_update(struct tm *t) {
           // couleur de fond
           #ifdef PBL_COLOR
           if (afound==0) {
-            if (jdiff==0) {
-              window_set_background_color(s_main_window, BACK_1DAY_COLOR);
+            global_jdiff = jdiff;
+            if (jdiff < THRESHOLD_DAY1) {
+              //window_set_background_color(s_main_window, BACK_1DAY_COLOR);
+              text_layer_set_background_color(ag_back_layer, BACK_1DAY_COLOR);
             }
-            else if (jdiff < 8) {
-              window_set_background_color(s_main_window, BACK_7DAY_COLOR); 
+            else if (jdiff < THRESHOLD_DAY7) {
+              //window_set_background_color(s_main_window, BACK_7DAY_COLOR); 
+              text_layer_set_background_color(ag_back_layer, BACK_7DAY_COLOR);  
             }            
             else {
-              window_set_background_color(s_main_window, BACK_ALLDAY_COLOR); 
+              //window_set_background_color(s_main_window, BACK_ALLDAY_COLOR);
+              text_layer_set_background_color(ag_back_layer, BACK_ALLDAY_COLOR); 
             };
           }
           #endif
@@ -460,10 +899,12 @@ void text_layers_update(struct tm *t) {
               snprintf(buf, 20, AgendaLookup[i].txt, year_delta);  break;
             case 'R':
               if (year_delta<0 || year_delta >= NOCE_ARRAY_SIZE) year_delta=0;
-              switch(config_language) {
+              get_noce(config_language, year_delta, NoceTmp);
+              snprintf(buf, 20, AgendaLookup[i].txt, NoceTmp);
+              /*switch(config_language) {
                 case language_FR:snprintf(buf, 20, AgendaLookup[i].txt, NoceLookup_fr[year_delta]); break;
                 default         :snprintf(buf, 20, AgendaLookup[i].txt, NoceLookup_us[year_delta]); 
-              }
+              }*/
               break;
             case 'V':
                 snprintf(buf, 20, AgendaLookup[i].txt, AGwVersion);
@@ -486,7 +927,7 @@ void text_layers_update(struct tm *t) {
 		  
     }; // while 3 lines
 
-    if (afound < 1) { strcpy(msg_text, " -=- "); };
+    if (afound < 1) { strcpy(msg_text,  " -=- "); };
     if (afound < 2) { strcpy(msg2_text, " -=- "); };
     if (afound < 3) { strcpy(msg3_text, " -=- "); };
 
@@ -553,6 +994,7 @@ void parse_AGLINES_fromPersist(void){
   AgendaLookup = (agenda*) malloc(sizeof(agenda) * nbagline);
   if (AgendaLookup == NULL) {
      AGENDA_ARRAY_SIZE = 0;
+     APP_LOG(APP_LOG_LEVEL_INFO, "AGmalloc failed");
     return;
   }
   else AGENDA_ARRAY_SIZE = nbagline;
@@ -635,6 +1077,7 @@ void parse_BIOLINES_fromPersist(void){
   BioLookup = (bio*) malloc(sizeof(bio) * nbbioline);
   if (BioLookup == NULL) {
      BIO_ARRAY_SIZE = 0;
+     APP_LOG(APP_LOG_LEVEL_INFO, "BIOmalloc failed");
     return;
   }
   else BIO_ARRAY_SIZE = nbbioline;
@@ -683,10 +1126,6 @@ void parse_BIOLINES_fromPersist(void){
   APP_LOG(APP_LOG_LEVEL_INFO, "End of BIO PARSING");
   #endif
 };
-
-
-
-
 
 
 
@@ -789,62 +1228,206 @@ void download_complete_handler(NetDownload *download) {
 //--------------------------------------------------------------------------
 
 //static void sync_changed_handler(const uint32_t key, const Tuple *new_tuple, const Tuple *old_tuple, void *context) {
-static void sync_changed_handler(const uint32_t key, const Tuple *new_tuple, void *context) {
-
+//static void sync_changed_handler(const uint32_t key, const Tuple *new_tuple, void *context) {
+static void sync_changed_handler(DictionaryIterator *iter, void *context) {
+ 
+      
+  bool needrefresh = false;
+  bool needwxrefresh = false;  
+  Tuple *new_tuple = dict_read_first(iter);
   // Update UI here
   // We know these values are uint8 format
-    
-  int uvalue = new_tuple->value->uint8;
-  #ifdef LOG_LEVEL_I  
-  switch (new_tuple->type) {
-    case TUPLE_CSTRING:
-      APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Phone Sync ask change for key=%u, value=%s", (int)key, new_tuple->value->cstring);    
-    break;
-    default:
-      APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Phone Sync ask change for key=%u, value=%u", (int)key, uvalue);  
-  };
-  #endif
-   
   
-  bool needrefresh = false;
-  switch (key) {
-    case KEY_LANGUAGE:     
-      if ((uvalue >= 0) && (uvalue < language_count) && (config_language != uvalue)) {
-        #ifdef LOG_LEVEL_I 
-        APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting Language. New Value=%u", uvalue);  
-        #endif
-        config_language = uvalue;
-        persist_write_int(KEY_LANGUAGE, config_language); 
-        needrefresh = true;
-        
-        //  relocate inverter layer
-        //GRect rect = layer_get_frame(inverter_layer_get_layer(inverter_layer));
-        //rect.origin.x = (screen == screen_black) ? 144 : 0;
-        //layer_set_frame(inverter_layer_get_layer(inverter_layer), rect);
-      }
+  
+  while (new_tuple) {
+    
+    int uvalue = new_tuple->value->uint8;
+    #ifdef LOG_LEVEL_I  
+    switch (new_tuple->type) {
+      case TUPLE_CSTRING:
+        APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Phone Sync ask change for key=%u, value=%s", (int)new_tuple->key, new_tuple->value->cstring);    
       break;
-    case KEY_VIBRATE:     
-      if ((uvalue >= 0) && (uvalue < vibrate_count) && (config_vibrate != uvalue)) {
-        #ifdef LOG_LEVEL_I
-        APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting Vibrate. New value=%u", uvalue);
+      default:
+        APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Phone Sync ask change for key=%u, value=%li", (int)new_tuple->key,  new_tuple->value->int32);  
+    };
+    #endif
+     
+
+    switch (new_tuple->key) {
+      case KEY_LANGUAGE:     
+        if ((uvalue >= 0) && (uvalue < language_count) && (config_language != uvalue)) {
+          #ifdef LOG_LEVEL_I2 
+          APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting Language. New Value=%u", uvalue);  
+          #endif
+          config_language = uvalue;
+          persist_write_int(KEY_LANGUAGE, config_language); 
+          needrefresh = true;
+          
+          //  relocate inverter layer
+          //GRect rect = layer_get_frame(inverter_layer_get_layer(inverter_layer));
+          //rect.origin.x = (screen == screen_black) ? 144 : 0;
+          //layer_set_frame(inverter_layer_get_layer(inverter_layer), rect);
+        }
+        break;
+      case KEY_VIBRATE:     
+        if ((uvalue >= 0) && (uvalue < vibrate_count) && (config_vibrate != uvalue)) {
+          #ifdef LOG_LEVEL_I2
+          APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting Vibrate. New value=%u", uvalue);
+          #endif
+          config_vibrate = uvalue;
+          persist_write_int(KEY_VIBRATE, config_vibrate);         
+          //needrefresh = true;
+        }
+        break;
+      case KEY_AGURL:     
+        if (strcmp(new_tuple->value->cstring, config_agurl)!=0)   {
+          #ifdef LOG_LEVEL_I2
+          APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting AgURL. New value=%s", new_tuple->value->cstring);
+          #endif
+          strcpy(config_agurl, new_tuple->value->cstring);
+          persist_write_string(KEY_AGURL, config_agurl);                            
+        }         
+        netdownload_request(config_agurl);
+        break;
+      case KEY_TEMPUNIT:     
+        if ((uvalue >= 0) && (uvalue < tempunit_count) && (config_tempunit != uvalue)) {
+          #ifdef LOG_LEVEL_I2
+          APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting TempUnit. New value=%u", uvalue);
+          #endif
+          config_tempunit = uvalue;
+          persist_write_int(KEY_VIBRATE, config_tempunit);         
+          //needrefresh = true;
+        }
+        break;
+      case KEY_WX_TEMP100X:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX temp. New=%li", new_tuple->value->int32);
         #endif
-        config_vibrate = uvalue;
-        persist_write_int(KEY_VIBRATE, config_vibrate);         
-        //needrefresh = true;
-      }
-      break;
-    case KEY_AGURL:     
-      if (strcmp(new_tuple->value->cstring, config_agurl)!=0)   {
-        #ifdef LOG_LEVEL_I
-        APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting AgURL. New value=%s", new_tuple->value->cstring);
+        wxdata_temp100x = new_tuple->value->int32; 
+        wxdata_timeOfLastResponse = time(NULL);
+        needwxrefresh = true;     
+        break;
+      case KEY_WX_CITYNAME:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX CityName. New=%s", new_tuple->value->cstring);
         #endif
-        strcpy(config_agurl, new_tuple->value->cstring);
-        persist_write_string(KEY_AGURL, config_agurl);                            
-      }         
-      netdownload_request(config_agurl);
-      break; 
+        strncpy(wxdata_city, new_tuple->value->cstring, sizeof(wxdata_city));
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_HUMIDITY:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX Humidity. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_humidity = new_tuple->value->int32;
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_CLOUDS:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX Clouds. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_clouds = new_tuple->value->int32;
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_CONDITION:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX Condition. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_condition = new_tuple->value->int32;
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_ICON:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX Icon. New=%s", new_tuple->value->cstring);
+        #endif
+        strncpy(wxdata_icon, new_tuple->value->cstring, sizeof(wxdata_icon));
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_DAY1_TIME:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX D1 time. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_day1time = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;      
+      case KEY_WX_DAY1TEMPMIN:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX D1 temp min. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_day1tempmin = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_DAY1TEMPMAX:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX D1 temp max. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_day1tempmax = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_DAY2_TIME:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX D2 time. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_day2time = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;            
+      case KEY_WX_DAY2TEMPMIN:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX D2 temp min. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_day2tempmin = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_DAY2TEMPMAX:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX D2 temp max. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_day2tempmax = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;
+      case KEY_WX_H0_CONDITIONS:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX H0 temp max. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_h0conditions = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;   
+      case KEY_WX_H3_CONDITIONS:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX H3 temp max. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_h3conditions = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break; 
+      case KEY_WX_H6_CONDITIONS:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX H6 temp max. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_h6conditions = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;       
+      case KEY_WX_H9_CONDITIONS:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX H9 temp max. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_h9conditions = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;     
+      case KEY_WX_H12_CONDITIONS:
+        #ifdef LOG_LEVEL_I2
+        APP_LOG(APP_LOG_LEVEL_INFO, "WX H12 temp max. New=%li", new_tuple->value->int32);
+        #endif
+        wxdata_h12conditions = new_tuple->value->int32;         
+        //needwxrefresh = true;
+        break;           
+    };
+    new_tuple = dict_read_next(iter);
   };
-  if (needrefresh==true) set_Initial_Layers();
+  
+  if (needwxrefresh==true) {
+    update_weathertext();
+    //vibes_double_pulse();   // Debug
+  };
+  if (needrefresh==true) set_Initial_Layers();  
 }
 
 
@@ -853,198 +1436,196 @@ static void main_window_load(Window *window) {
 #ifdef PBL_COLOR
   #ifdef LOG_LEVEL_I
   APP_LOG(APP_LOG_LEVEL_INFO, "Pebble is COLOR"); 
-  #endif
-  //window_set_background_color(window, GColorOxfordBlue);
-  window_set_background_color(window, GColorBlack);
+  #endif  
 #else
   #ifdef LOG_LEVEL_I
   APP_LOG(APP_LOG_LEVEL_INFO, "Pebble is B&W"); 
   #endif
-  window_set_background_color(window, GColorBlack);
+  
 #endif
-    
+            
+  window_set_background_color(window, GColorBlack);  
   Layer *window_layer = window_get_root_layer(window);
 
 
-  //Initialise screen = 144 x 168
-  // GRect(X, Y, W, H)
-
+ //Initialise screen = 144 x 168
+ // GRect(X, Y, W, H)
+ 
+#define Z1_minY  0 
+#define Z2_minY 20
+#define Z3_minY 70
+#define Z4_minY 107
+  
+ //---------------------------------------------------------------------------
+ // ZONE 1
+       
   // Jour Date
-  text_date_layer = text_layer_create(GRect(0+1, 0, 110, 19));
-  text_layer_set_text_color(text_date_layer, GColorWhite);
-  text_layer_set_background_color(text_date_layer, GColorClear);
-  text_layer_set_font(text_date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-  layer_add_child(window_layer, text_layer_get_layer(text_date_layer));
-
+  text_date_layer = text_layer_create_ext(window_layer, GRect(0+1, 0, 110, 19), GColorWhite, GColorClear,
+                                          fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentLeft);   
   // Week Number ISO8601
-  text_week_layer = text_layer_create(GRect(118, 0 , 144-118, 19));
-  text_layer_set_text_color(text_week_layer, GColorWhite);
-  text_layer_set_background_color(text_week_layer, GColorClear);
-  text_layer_set_font(text_week_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-  text_layer_set_text_alignment(text_week_layer, GTextAlignmentRight);
-  layer_add_child(window_layer, text_layer_get_layer(text_week_layer));
+  text_week_layer = text_layer_create_ext(window_layer, GRect(118, 0 , 144-118, 19), GColorWhite, GColorClear,
+                                          fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentRight);  
 
+  //---------------------------------------------------------------------------
+ // ZONE 2  
   // Heure
-  text_time_layer = text_layer_create(GRect(0, 20, 144, 45));
-  text_layer_set_background_color(text_time_layer, GColorClear);
-  text_layer_set_text_color(text_time_layer, GColorWhite);
-  text_layer_set_font(text_time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
-  text_layer_set_text_alignment(text_time_layer, GTextAlignmentCenter);
-  layer_add_child(window_layer, text_layer_get_layer(text_time_layer));
+  text_time_layer = text_layer_create_ext(window_layer, GRect(0, 20, 144, 45), GColorWhite, GColorClear,
+                                          fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD),GTextAlignmentCenter);   
 
   //---------------------------------------------------------------------------
   // ZONE 3
   //
-  
+
   // Zodiac sign
-  text_z_layer = text_layer_create(GRect(0, 70, 40, 40));
-  text_layer_set_text_color      (text_z_layer, GColorWhite);
-  text_layer_set_background_color(text_z_layer, GColorClear);
-  text_layer_set_font(text_z_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ZODIAC_28)));
-  text_layer_set_text_alignment(text_z_layer, GTextAlignmentCenter);
-  layer_add_child(window_layer, text_layer_get_layer(text_z_layer));
+  text_zodSIGN_layer = text_layer_create_ext(window_layer, GRect(0, Z3_minY, 40, 40), GColorWhite, GColorClear,
+                                             fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ZODIAC_28)), GTextAlignmentCenter);  
 
   // Zodiac text
-  text_zodiac_layer = text_layer_create(GRect(38, 72, 144-40-42, 35));
-  text_layer_set_text_color(text_zodiac_layer, GColorWhite);
-  text_layer_set_background_color(text_zodiac_layer, GColorClear);
-  text_layer_set_font(text_zodiac_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24) );
-  text_layer_set_text_alignment(text_zodiac_layer, GTextAlignmentLeft);
-  layer_add_child(window_layer, text_layer_get_layer(text_zodiac_layer));
+  text_zodiac_layer = text_layer_create_ext(window_layer, GRect(38, Z3_minY+2, 144-40-42, 35), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_24), GTextAlignmentLeft);    
 
   // Moon Phase
-  text_moon_layer = text_layer_create(GRect(144-40, 75, 40, 35));
-  text_layer_set_text_color      (text_moon_layer, GColorWhite);
-  text_layer_set_background_color(text_moon_layer, GColorClear);
-  text_layer_set_font(text_moon_layer, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_MOONPHASE_28)));
-  text_layer_set_text_alignment(text_moon_layer, GTextAlignmentCenter);
-  layer_add_child(window_layer, text_layer_get_layer(text_moon_layer));
+  text_zodMOON_layer = text_layer_create_ext(window_layer, GRect(144-40, Z3_minY+5, 40, 35), GColorWhite, GColorClear,
+                                             fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_MOONPHASE_28)), GTextAlignmentCenter);  
 
   #define bioW 33
   // Biorythm Name
-  text_bioname_layer = text_layer_create(GRect(0, 70, bioW*3, 20));
-  text_layer_set_text_color      (text_bioname_layer, GColorWhite);
-  text_layer_set_background_color(text_bioname_layer, GColorClear);
-  text_layer_set_font(text_bioname_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18) );
-  text_layer_set_text_alignment(text_bioname_layer, GTextAlignmentCenter);
-  layer_set_hidden(text_layer_get_layer(text_bioname_layer), true);
-  layer_add_child(window_layer, text_layer_get_layer(text_bioname_layer));  
+  text_bioNAME_layer = text_layer_create_ext(window_layer,GRect(0, Z3_minY, bioW*3, 20), GColorWhite, GColorClear,
+                                         fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentCenter);  
 
-  text_bioPHY_layer = text_layer_create(GRect(0, 90, bioW, 17));
-  text_layer_set_text_color      (text_bioPHY_layer, PHY_COLOR);//bleu
-  text_layer_set_background_color(text_bioPHY_layer, GColorClear);  
-  text_layer_set_font(text_bioPHY_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
-  text_layer_set_text_alignment(text_bioPHY_layer, GTextAlignmentCenter);
-  layer_set_hidden(text_layer_get_layer(text_bioPHY_layer), true);
-  layer_add_child(window_layer, text_layer_get_layer(text_bioPHY_layer));  
-   
-    
-  text_bioEMO_layer = text_layer_create(GRect(0+bioW, 90, bioW, 17));  
-  text_layer_set_text_color      (text_bioEMO_layer, EMO_COLOR);     
-  text_layer_set_background_color(text_bioEMO_layer, GColorClear);
-  text_layer_set_font(text_bioEMO_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
-  text_layer_set_text_alignment(text_bioEMO_layer, GTextAlignmentCenter);
-  layer_set_hidden(text_layer_get_layer(text_bioEMO_layer), true);
-  layer_add_child(window_layer, text_layer_get_layer(text_bioEMO_layer));  
+  text_bioPHY_layer = text_layer_create_ext(window_layer, GRect(0, Z3_minY+20, bioW, 17), PHY_COLOR, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);     
+      
+  text_bioEMO_layer = text_layer_create_ext(window_layer, GRect(0+bioW, Z3_minY+20, bioW, 17), EMO_COLOR, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);  
   
-  text_bioINT_layer = text_layer_create(GRect(0+bioW+bioW, 90, bioW, 17));  
-  text_layer_set_text_color      (text_bioINT_layer, INT_COLOR);
-  text_layer_set_background_color(text_bioINT_layer, GColorClear);
-  text_layer_set_font(text_bioINT_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14) );
-  text_layer_set_text_alignment(text_bioINT_layer, GTextAlignmentCenter);
-  layer_set_hidden(text_layer_get_layer(text_bioINT_layer), true);
-  layer_add_child(window_layer, text_layer_get_layer(text_bioINT_layer));  
+  text_bioINT_layer = text_layer_create_ext(window_layer, GRect(0+bioW+bioW, Z3_minY+20, bioW, 17), INT_COLOR, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);   
   
-  biograph_layer = layer_create(GRect(100,72,44,35));
-  layer_set_hidden(biograph_layer, true);
+  biograph_layer = layer_create(GRect(100,Z3_minY+2,44,35));
   layer_set_update_proc(biograph_layer, biograph_layer_update_callback);
   layer_add_child(window_layer, biograph_layer);
   
+  // Weather         
+#ifdef PBL_PLATFORM_BASALT
+  text_wxICON_layer = text_layer_create_ext(window_layer, GRect(0, Z3_minY+6, wxI_w, 23), GColorWhite, GColorClear,
+                                            fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_WEATHER_18)), GTextAlignmentCenter);  
+#endif
+     
+  graph_wxRAIN_layer = layer_create(GRect(0+1,Z3_minY+6+23,44,8));
+  layer_set_update_proc(graph_wxRAIN_layer, graph_wxRAIN_layer_update_callback);
+  layer_add_child(window_layer, graph_wxRAIN_layer);
+
+#ifdef PBL_PLATFORM_BASALT
+  text_wxTEMP_layer = text_layer_create_ext(window_layer, GRect(0+wxI_w, Z3_minY, wxT_w, 38), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD), GTextAlignmentCenter);
+#else
+  text_wxTEMP_layer = text_layer_create_ext(window_layer, GRect(0,       Z3_minY-2, wxT_w, 38), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD), GTextAlignmentCenter);
+#endif
   
+#ifdef PBL_PLATFORM_BASALT  
+  text_wxCITY_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w+wxI_w, Z3_minY, 144-wxT_w-wxI_w, 20), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentRight);
+    
+  text_wxINFO_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w+wxI_w-10, Z3_minY+20, 144-wxT_w-wxI_w+10, 20), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentRight);
+#else    
+  text_wxCITY_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w, Z3_minY,    144-wxT_w, 20), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentCenter);
+    
+  text_wxINFO_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w, Z3_minY+20, 144-wxT_w, 20), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);
+#endif
   
   //---------------------------------------------------------------------------
   // ZONE 4
   //
-
+  
+  ag_back_layer = text_layer_create(GRect(0,Z4_minY+1,144,168-108));
+  text_layer_set_background_color(ag_back_layer, GColorClear);
+  layer_add_child(window_layer, text_layer_get_layer(ag_back_layer));
+  
+  
   // Msg
-  text_msg_layer = text_layer_create(GRect(0, 107, 144, 22));
-  text_layer_set_font(text_msg_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-  text_layer_set_text_alignment(text_msg_layer, GTextAlignmentCenter);
-  text_layer_set_text_color(text_msg_layer, GColorWhite);
-  text_layer_set_background_color(text_msg_layer, GColorClear);
-  layer_add_child(window_layer, text_layer_get_layer(text_msg_layer));
-
-  text_msg2_layer = text_layer_create(GRect(0, 107+20, 144, 21));
-  text_layer_set_font(text_msg2_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-  text_layer_set_text_alignment(text_msg2_layer, GTextAlignmentCenter);
-  text_layer_set_text_color(text_msg2_layer, GColorWhite);
-  text_layer_set_background_color(text_msg2_layer, GColorClear);
-  layer_add_child(window_layer, text_layer_get_layer(text_msg2_layer));
-
-
-  text_msg3_layer = text_layer_create(GRect(0, 107+20+20, 144, 17));		//152  168
-  text_layer_set_font(text_msg3_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  text_layer_set_text_alignment(text_msg3_layer, GTextAlignmentCenter);
-  text_layer_set_text_color(text_msg3_layer, GColorWhite);
-  text_layer_set_background_color(text_msg3_layer, GColorClear);
-  layer_add_child(window_layer, text_layer_get_layer(text_msg3_layer)); 
-
+  text_msg_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY, 144, 22), GColorWhite, GColorClear,
+                                         fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GTextAlignmentCenter);
+  
+  text_msg2_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY+20, 144, 21), GColorWhite, GColorClear,
+                                          fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentCenter);
+  
+  text_msg3_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY+20+20, 144, 17), GColorWhite, GColorClear,
+                                      fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);
+  
   line_layer = layer_create(layer_get_bounds(window_layer));
   layer_set_update_proc(line_layer, line_layer_update_callback);
   layer_add_child(window_layer, line_layer);
 
 
   // Set initial configuration
-  layers_mode = ZOD_mode;
+  SetLayerMode(ZOD_mode);
   
   if (persist_exists(KEY_LANGUAGE)) { 
     config_language = persist_read_int(KEY_LANGUAGE);    
-    #ifdef LOG_LEVEL_I
+    #ifdef LOG_LEVEL_I2
     APP_LOG(APP_LOG_LEVEL_INFO, "Setting KEY_LANGUAGE=%u from STORAGE", config_language);  
     #endif      
   } 
   else { 
     config_language = language_FR; 
-    #ifdef LOG_LEVEL_I    
+    #ifdef LOG_LEVEL_I2    
     APP_LOG(APP_LOG_LEVEL_INFO, "No KEY_LANGUAGE. Using default %u", config_language);  
     #endif
   };
   
   if (persist_exists(KEY_VIBRATE)) { 
     config_vibrate = persist_read_int(KEY_VIBRATE);
-    #ifdef LOG_LEVEL_I    
+    #ifdef LOG_LEVEL_I2    
     APP_LOG(APP_LOG_LEVEL_INFO, "Setting KEY_VIBRATE=%u from STORAGE", config_vibrate);         
     #endif
   }
   else { 
     config_vibrate  = vibrate_12AM8PM;
-    #ifdef LOG_LEVEL_I    
+    #ifdef LOG_LEVEL_I2    
     APP_LOG(APP_LOG_LEVEL_INFO, "No KEY_VIBRATE. Using default %u", config_vibrate);               
+    #endif
+  };
+  
+  if (persist_exists(KEY_TEMPUNIT)) { 
+    config_tempunit = persist_read_int(KEY_TEMPUNIT);
+    #ifdef LOG_LEVEL_I2    
+    APP_LOG(APP_LOG_LEVEL_INFO, "Setting KEY_TEMPUNIT=%u from STORAGE", config_tempunit);         
+    #endif
+  }
+  else { 
+    config_tempunit  = tempunit_CELSIUS;
+    #ifdef LOG_LEVEL_I2    
+    APP_LOG(APP_LOG_LEVEL_INFO, "No KEY_VIBRATE. Using default %u", config_tempunit);               
     #endif
   };
   
   if (persist_exists(KEY_AGURL)) { 
     persist_read_string(KEY_AGURL, config_agurl, sizeof(config_agurl));
-    #ifdef LOG_LEVEL_I    
+    #ifdef LOG_LEVEL_I2    
     APP_LOG(APP_LOG_LEVEL_INFO, "Setting KEY_AGURL=%s from STORAGE", config_agurl);         
     #endif
   }
   else { 
     strcpy(config_agurl, "");
-    #ifdef LOG_LEVEL_I    
+    #ifdef LOG_LEVEL_I2    
     APP_LOG(APP_LOG_LEVEL_INFO, "No KEY_AGURL. Using default %s", config_agurl);         
     #endif
   };
   
 
   if (persist_exists(KEY_AG_NBLINE)) {
-    #ifdef LOG_LEVEL_I    
+    #ifdef LOG_LEVEL_I2    
     APP_LOG(APP_LOG_LEVEL_INFO, "AG_NBLINES Exists... trying to parse"); 
     #endif
     parse_AGLINES_fromPersist(); 
   };    
   if (persist_exists(KEY_BIO_NBLINE)) {
-    #ifdef LOG_LEVEL_I    
+    #ifdef LOG_LEVEL_I2    
     APP_LOG(APP_LOG_LEVEL_INFO, "BIO_NBLINES Exists... trying to parse"); 
     #endif
     parse_BIOLINES_fromPersist(); 
@@ -1069,18 +1650,29 @@ static void main_window_unload(Window *window) {
   #endif  
   layer_destroy(line_layer);  
   layer_destroy(biograph_layer) ;
+  layer_destroy(graph_wxRAIN_layer);
+  
   text_layer_destroy(text_msg3_layer);
   text_layer_destroy(text_msg2_layer);
   text_layer_destroy(text_msg_layer);
   
-  text_layer_destroy(text_bioname_layer);
+  text_layer_destroy(ag_back_layer);
+    
+  text_layer_destroy(text_wxINFO_layer);
+#ifdef PBL_PLATFORM_BASALT
+  text_layer_destroy(text_wxICON_layer);
+#endif
+  text_layer_destroy(text_wxCITY_layer);
+  text_layer_destroy(text_wxTEMP_layer);
+  
+  text_layer_destroy(text_bioNAME_layer);
   text_layer_destroy(text_bioINT_layer);
   text_layer_destroy(text_bioPHY_layer);  
   text_layer_destroy(text_bioEMO_layer);    
   
-  text_layer_destroy(text_moon_layer);
+  text_layer_destroy(text_zodMOON_layer);
   text_layer_destroy(text_zodiac_layer);
-  text_layer_destroy(text_z_layer);
+  text_layer_destroy(text_zodSIGN_layer);
   
   text_layer_destroy(text_time_layer);
   
