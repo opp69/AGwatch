@@ -1,5 +1,8 @@
 #include "netdownload.h"
 
+//#define LOG_LEVEL_I    
+//#define LOG_LEVEL_I2
+  
 NetDownloadContext* netdownload_create_context(NetDownloadCallback dlcallback, TupleReceiveCallback tpcallback) {
   NetDownloadContext *ctx = malloc(sizeof(NetDownloadContext));
 
@@ -41,6 +44,9 @@ void netdownload_deinitialize() {
 }
 
 void netdownload_request(char *url) {
+  #ifdef LOG_LEVEL_I
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Starting netdownload_request");
+  #endif
   DictionaryIterator *outbox;
   app_message_outbox_begin(&outbox);
   // Tell the javascript how big we want each chunk of data: max possible size - dictionary overhead with one Tuple in it.
@@ -49,7 +55,14 @@ void netdownload_request(char *url) {
   // Send the URL
   dict_write_cstring(outbox, NETDL_URL, url);
 
+  #ifdef LOG_LEVEL_I
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Sending message to JS");
+  #endif
   app_message_outbox_send();
+  
+  #ifdef LOG_LEVEL_I
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Ending netdownload_request");
+  #endif
 }
 
 void netdownload_destroy(NetDownload *image) {

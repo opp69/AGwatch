@@ -13,7 +13,7 @@
 */
   
 /*================================================================*/
-#define AGwVersion  "v4.5"
+#define AGwVersion  "v4.6"
 /*================================================================*/
     
 #ifdef PBL_COLOR
@@ -126,7 +126,7 @@ static char wxCity_text[] = "123456789012345";
 #ifdef PBL_PLATFORM_BASALT
 static char wxIcon_text[] = "\uf055";
 #endif
-static char wxInfo_text[] = "-13/-18° 100%";
+static char wxInfo_text[] = "-xx/-xx° xxx%";
 
 
 enum KEY_Settings { KEY_LANGUAGE = 1, KEY_VIBRATE, KEY_AGURL, KEY_TEMPUNIT };
@@ -649,7 +649,9 @@ void text_layers_update(struct tm *t) {
         && (layers_mode==WX_mode)) SetLayerMode(BIO_mode);
     
     if (difftime(wxdata_timeOfLastRequest, wxdata_timeOfLastResponse)>SECONDS_AFTER_WEATHER_WARNING) {
-      if (strlen(wxTemp_text)>0) wxTemp_text[strlen(wxTemp_text)-1]='!';
+      int tempC = round100(kelvin100toTU(wxdata_temp100x, config_tempunit));
+      snprintf(wxTemp_text, sizeof(wxTemp_text), "%d?",  tempC );
+      //if (strlen(wxTemp_text)>0) wxTemp_text[strlen(wxTemp_text)-1]='i'; // don't work because UTF8
     };
     
     if ((BIO_ARRAY_SIZE==0) && (layers_mode==BIO_mode)) SetLayerMode(ZOD_mode);   
@@ -1156,7 +1158,7 @@ void store_LINE(int* agindex, int* bioindex, char* line) {
 
 void store_AGwFILE_toPersist(NetDownload *download) {
   #ifdef LOG_LEVEL_I
-  APP_LOG(APP_LOG_LEVEL_INFO, "STORING FILE");
+  APP_LOG(APP_LOG_LEVEL_INFO, "STORING FILE length=%lu", download->length);
   #endif
   
   int aglineindex = 0;
@@ -1170,6 +1172,9 @@ void store_AGwFILE_toPersist(NetDownload *download) {
   while (i<download->length) {    
     if (download->data[i]==';') {
       buffer[ii]='\0';
+      #ifdef LOG_LEVEL_I
+        APP_LOG(APP_LOG_LEVEL_INFO, "STORING i=%lu, Line=%s", i, buffer);
+      #endif
       store_LINE(&aglineindex, &biolineindex, buffer);
       ii = 0;
       buffer[0]='\0';
@@ -1234,6 +1239,7 @@ static void sync_changed_handler(DictionaryIterator *iter, void *context) {
       
   bool needrefresh = false;
   bool needwxrefresh = false;  
+  bool needdownload = false;
   Tuple *new_tuple = dict_read_first(iter);
   // Update UI here
   // We know these values are uint8 format
@@ -1287,7 +1293,7 @@ static void sync_changed_handler(DictionaryIterator *iter, void *context) {
           strcpy(config_agurl, new_tuple->value->cstring);
           persist_write_string(KEY_AGURL, config_agurl);                            
         }         
-        netdownload_request(config_agurl);
+        needdownload = true;        
         break;
       case KEY_TEMPUNIT:     
         if ((uvalue >= 0) && (uvalue < tempunit_count) && (config_tempunit != uvalue)) {
@@ -1295,7 +1301,7 @@ static void sync_changed_handler(DictionaryIterator *iter, void *context) {
           APP_LOG(APP_LOG_LEVEL_INFO, "Pebble Setting TempUnit. New value=%u", uvalue);
           #endif
           config_tempunit = uvalue;
-          persist_write_int(KEY_VIBRATE, config_tempunit);         
+          persist_write_int(KEY_TEMPUNIT, config_tempunit);         
           //needrefresh = true;
         }
         break;
@@ -1421,6 +1427,13 @@ static void sync_changed_handler(DictionaryIterator *iter, void *context) {
         break;           
     };
     new_tuple = dict_read_next(iter);
+  };
+  
+  if (needdownload==true) {
+    #ifdef LOG_LEVEL_I
+      APP_LOG(APP_LOG_LEVEL_INFO, "Requesting netdownload");
+    #endif
+    netdownload_request(config_agurl);
   };
   
   if (needwxrefresh==true) {
@@ -1600,7 +1613,7 @@ static void main_window_load(Window *window) {
   else { 
     config_tempunit  = tempunit_CELSIUS;
     #ifdef LOG_LEVEL_I2    
-    APP_LOG(APP_LOG_LEVEL_INFO, "No KEY_VIBRATE. Using default %u", config_tempunit);               
+    APP_LOG(APP_LOG_LEVEL_INFO, "No KEY_TEMPUNIT. Using default %u", config_tempunit);               
     #endif
   };
   

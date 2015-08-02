@@ -52,9 +52,13 @@ int round100(int _n) {
 
 
 int kelvin100toTU(int _t, enum SettingTempUnit _unit) { 
+  
+  //APP_LOG(APP_LOG_LEVEL_INFO, "kelvin100toTU", uvalue);
+  
   switch (_unit) {
     case tempunit_CELSIUS:
       return (_t - 27315);
+      break;
     default:
       return ((_t - 27315)*1.8+3200);
   }
