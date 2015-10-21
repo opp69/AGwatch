@@ -38,6 +38,15 @@
     "resources": {
         "media": [
             {
+                "file": "fonts/weathericons-regular-webfont.ttf",
+                "name": "FONT_WEATHER_18",
+                "targetPlatforms": [
+                    "basalt",
+                    "chalk"
+                ],
+                "type": "font"
+            },
+            {
                 "file": "data/noces_us.txt",
                 "name": "NOCES_US",
                 "type": "raw"
@@ -46,11 +55,6 @@
                 "file": "data/noces_fr.txt",
                 "name": "NOCES_FR",
                 "type": "raw"
-            },
-            {
-                "file": "fonts/weathericons-regular-webfont v1.3.ttf",
-                "name": "FONT_WEATHER_18",
-                "type": "font"
             },
             {
                 "file": "images/menu_icon_mozwatch.png",
@@ -78,10 +82,11 @@
     "shortName": "AGw",
     "targetPlatforms": [
         "aplite",
-        "basalt"
+        "basalt",
+        "chalk"
     ],
     "uuid": "f6a2f94d-13af-4649-b341-26b1768e2c25",
-    "versionLabel": "4.6",
+    "versionLabel": "4.8",
     "watchapp": {
         "watchface": true
     }

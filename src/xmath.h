@@ -27,7 +27,7 @@ void get_noce(enum SettingLanguage _lng, int _year, char *_buf) {
     default:
       rh = resource_get_handle(RESOURCE_ID_NOCES_US);    
   }
-  resource_load_byte_range(rh, _year*32, (uint8_t*) _buf, 32-2);
+  resource_load_byte_range(rh, _year*32+3, (uint8_t*) _buf, 32-2-3);  //XX,aaaaaaaaaa
 }
 
 

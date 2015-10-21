@@ -13,7 +13,7 @@
 */
   
 /*================================================================*/
-#define AGwVersion  "v4.6"
+#define AGwVersion  "v4.9"
 /*================================================================*/
     
 #ifdef PBL_COLOR
@@ -73,7 +73,7 @@ TextLayer *text_bioINT_layer;
 
 TextLayer *text_wxCITY_layer;
 TextLayer *text_wxTEMP_layer;  
-#ifdef PBL_PLATFORM_BASALT
+#ifndef PBL_PLATFORM_APLITE
 TextLayer *text_wxICON_layer;  
 #endif
 TextLayer *text_wxINFO_layer;  
@@ -89,6 +89,7 @@ Layer *line_layer;
 Layer *biograph_layer;
 Layer *graph_wxRAIN_layer;
 
+GRect bounds;
 
 #define THRESHOLD_DAY7 8
 #define THRESHOLD_DAY1 2
@@ -123,7 +124,7 @@ static char msg3_text[] = "J+XX: 12345678901234567890";
 
 static char wxTemp_text[] = "---°";
 static char wxCity_text[] = "123456789012345";
-#ifdef PBL_PLATFORM_BASALT
+#ifndef PBL_PLATFORM_APLITE
 static char wxIcon_text[] = "\uf055";
 #endif
 static char wxInfo_text[] = "-xx/-xx° xxx%";
@@ -201,7 +202,11 @@ static BatteryChargeState myBatState;
 static bool myBTState = false;    // unknown
 
 #define wxI_w 38
-#define wxT_w 40
+#if defined(PBL_ROUND)
+  #define wxT_w 50
+#else
+  #define wxT_w 40
+#endif
 
 
 
@@ -214,7 +219,7 @@ void DrawBIOSin(GContext* ctx, int periode) {
   int32_t y1;
   int32_t y2; 
   int i ;
-  for (i=0; i<44; i++) {
+  for (i=0; i<bounds.size.w-100; i++) {
     int32_t angle = (i/2+bio_deltaJ-14/2) *TRIG_MAX_ANGLE/periode;
     y1 =-sin_lookup(angle) * 16 / TRIG_MAX_RATIO+17;
     angle = ((i+1)/2+bio_deltaJ-14/2)*TRIG_MAX_ANGLE/periode;
@@ -238,7 +243,7 @@ void biograph_layer_update_callback(Layer *me, GContext* ctx) {
   
   graphics_context_set_stroke_color(ctx, GColorWhite);
   //graphics_draw_rect(ctx, GRect(0,0,44,35) );
-  graphics_draw_line(ctx, GPoint(0,17), GPoint(44,17));
+  graphics_draw_line(ctx, GPoint(0,17), GPoint(bounds.size.w-100,17));
   graphics_draw_line(ctx, GPoint(14,0), GPoint(14, 35));                    
  
 }
@@ -288,43 +293,46 @@ void line_layer_update_callback(Layer *me, GContext* ctx) {
 #endif
   
 
- graphics_draw_line(ctx, GPoint(6, 22), GPoint(144-6, 22));
- graphics_draw_line(ctx, GPoint(6, 107), GPoint(144-6, 107));  
+ graphics_draw_line(ctx, GPoint(6, 22), GPoint(bounds.size.w-6, 22));
+ graphics_draw_line(ctx, GPoint(6, 107), GPoint(bounds.size.w-6, 107));  
 //  graphics_draw_line(ctx, GPoint(6, 59), GPoint(132, 59));
 
 #ifdef PBL_COLOR
   //graphics_context_set_stroke_color(ctx, GColorRajah);
 #endif
-  graphics_draw_line(ctx, GPoint(6, 70), GPoint(144-6, 70));
-  graphics_draw_line(ctx, GPoint(6, 71), GPoint(144-6, 71));
+  graphics_draw_line(ctx, GPoint(6, 70), GPoint(bounds.size.w-6, 70));
+  graphics_draw_line(ctx, GPoint(6, 71), GPoint(bounds.size.w-6, 71));
 
- 
+  const int BTxOffset = PBL_IF_RECT_ELSE(6,  13);
+  const int BTyOffset = PBL_IF_RECT_ELSE(25, 57);  
+  const int PWxOffset = PBL_IF_RECT_ELSE(6,  25);  
   graphics_context_set_stroke_color(ctx, GColorWhite);
   if (myBTState == true) {
     const int BTH = 8;
     const int BTH4 = 2;
-    
+  
+        
     graphics_context_set_stroke_color(ctx, GColorWhite);
-    graphics_draw_line(ctx, GPoint(6, 25),               GPoint(6, 25+BTH));
-    graphics_draw_line(ctx, GPoint(6, 25),               GPoint(6+BTH4, 25+BTH4));
-    graphics_draw_line(ctx, GPoint(6+BTH4, 25+BTH4),     GPoint(6-BTH4, 25+BTH4*3));    
+    graphics_draw_line(ctx, GPoint(BTxOffset, BTyOffset),               GPoint(BTxOffset,      BTyOffset+BTH));
+    graphics_draw_line(ctx, GPoint(BTxOffset, BTyOffset),               GPoint(BTxOffset+BTH4, BTyOffset+BTH4));
+    graphics_draw_line(ctx, GPoint(BTxOffset+BTH4, BTyOffset+BTH4),     GPoint(BTxOffset-BTH4, BTyOffset+BTH4*3));    
     
-    graphics_draw_line(ctx, GPoint(6, 25+BTH),           GPoint(6+BTH4, 25+BTH-BTH4));
-    graphics_draw_line(ctx, GPoint(6+BTH4, 25+BTH-BTH4), GPoint(6-BTH4, 25+BTH-BTH4*3) );    
+    graphics_draw_line(ctx, GPoint(BTxOffset, BTyOffset+BTH),           GPoint(BTxOffset+BTH4, BTyOffset+BTH-BTH4));
+    graphics_draw_line(ctx, GPoint(BTxOffset+BTH4, BTyOffset+BTH-BTH4), GPoint(BTxOffset-BTH4, BTyOffset+BTH-BTH4*3) );    
   }
   
   if ((myBatState.is_charging == true) || (myBatState.charge_percent<=BATT_PERCENT)) {
-    graphics_draw_line(ctx, GPoint(5, 54), GPoint(7, 54));
-    graphics_draw_rect(ctx, GRect(3, 55, 7, 13));
+    graphics_draw_line(ctx, GPoint(PWxOffset-1, 54), GPoint(PWxOffset+1, 54));
+    graphics_draw_rect(ctx, GRect(PWxOffset-3, 55, 7, 13));
     graphics_context_set_fill_color(ctx, GColorWhite);
-    graphics_fill_rect(ctx, GRect(3+2, 55+13-2, 3, -myBatState.charge_percent/10), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(PWxOffset-3+2, 55+13-2, 3, -myBatState.charge_percent/10), 0, GCornerNone);
   }
   
   
   if (myBatState.is_charging == true) {
-    graphics_draw_line(ctx, GPoint(5, 50), GPoint(7, 48));
-    graphics_draw_line(ctx, GPoint(7, 48), GPoint(5, 48));    
-    graphics_draw_line(ctx, GPoint(5, 48), GPoint(7, 46));        
+    graphics_draw_line(ctx, GPoint(PWxOffset-1, 50), GPoint(PWxOffset+1, 48));
+    graphics_draw_line(ctx, GPoint(PWxOffset+1, 48), GPoint(PWxOffset-1, 48));    
+    graphics_draw_line(ctx, GPoint(PWxOffset-1, 48), GPoint(PWxOffset+1, 46));        
   }
 }
 
@@ -343,7 +351,7 @@ void display_layers_mode(enum LayersMode _mode ) {
   
   layer_set_hidden(text_layer_get_layer(text_wxCITY_layer),   _mode != WX_mode); 
   layer_set_hidden(text_layer_get_layer(text_wxTEMP_layer),   _mode != WX_mode);     
-#ifdef PBL_PLATFORM_BASALT
+#ifndef PBL_PLATFORM_APLITE
   layer_set_hidden(text_layer_get_layer(text_wxICON_layer),   _mode != WX_mode); 
 #endif  
   layer_set_hidden(text_layer_get_layer(text_wxINFO_layer),   _mode != WX_mode);       
@@ -430,7 +438,7 @@ void update_weathertext() {
   
  // if (wxdata_day1tempmin==0) snprintf(wxInfo_text, sizeof(wxInfo_text),"%d%%", wxdata_humidity);  
 //else snprintf(wxInfo_text, sizeof(wxInfo_text),"%d/%d° %d%%", d1tempmin, d1tempmax, wxdata_humidity);
-#ifdef PBL_PLATFORM_BASALT  
+#ifndef PBL_PLATFORM_APLITE  
   bool isDay = true;
   bool isCloudy = true;
   if (strlen(wxdata_icon)>1 && wxdata_icon[strlen(wxdata_icon)-1]=='n') isDay = false;
@@ -497,8 +505,8 @@ void update_weathertext() {
     case 621:
     case 622:
       if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf01b");  
-      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00a");  
-      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf02a");  
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00a");  // wi-day-snow
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf02a");  // wi-night-alt-snow
       break; 
     case 611: //Sleet
     case 612:
@@ -514,13 +522,34 @@ void update_weathertext() {
       break; 
     //==================================================
     case 701: // mist
-      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf014");  
-      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf003");  
-      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf04a");
+    case 741: // fog    
+      if (isCloudy==true)   snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf014");  // wi-fog
+      else if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf003");  // wi-day-fog
+      else                  snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf04a");  // wi-night-fog
       break;
     case 711: // smoke
-      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf062");
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf062"); // wi-smoke
+      break;  
+    case 721: // haze
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0b6"); // wi-day-haze
       break;
+    case 731: // sand, dust whirls
+    case 751: // sand
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf082"); // wi-sandstorm
+      break;     
+    case 761: // dust
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf063"); // wi-dust
+      break; 
+    case 762: // volcanic ash
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf0c8"); // wi-volcano
+      break;     
+    case 771: // squalls
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf050"); // wi-strong-wind
+      break;         
+    
+    case 781: // tornado
+      snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf056"); // wi-tornado
+      break;         
     //==================================================
     case 800: // clear sky
       if (isDay==true) snprintf(wxIcon_text, sizeof(wxIcon_text), "%s",   "\uf00d");  
@@ -707,14 +736,22 @@ void text_layers_update(struct tm *t) {
     if (config_language == language_FR) {
       strncpy(date_text, day_names_fr[t->tm_wday], 3);		// le joursem sur 2 char
       date_text[3]='\0';
-      strftime(tmp_date_text, sizeof(tmp_date_text), " %d/%m/%Y", t); 
+      #if defined(PBL_ROUND)              
+        strftime(tmp_date_text, sizeof(tmp_date_text), " %d/%m", t); 
+      #else
+        strftime(tmp_date_text, sizeof(tmp_date_text), " %d/%m/%Y", t); 
+      #endif      
       strcat(date_text, tmp_date_text);
     }
     else {
       strftime(tmp_date_text, sizeof(tmp_date_text), "%a", t);
       strncpy(date_text, tmp_date_text, 3);
       date_text[3]='\0';
-      strftime(tmp_date_text, sizeof(tmp_date_text), " %m.%d.%Y", t); 
+      #if defined(PBL_ROUND)        
+        strftime(tmp_date_text, sizeof(tmp_date_text), " %m.%d", t); 
+      #else
+        strftime(tmp_date_text, sizeof(tmp_date_text), " %m.%d.%Y", t);       
+      #endif
       strcat(date_text, tmp_date_text);
     };    
     text_layer_set_text(text_date_layer, date_text);
@@ -779,7 +816,7 @@ void text_layers_update(struct tm *t) {
     text_layer_set_text(text_wxTEMP_layer, wxTemp_text);    
     text_layer_set_text(text_wxCITY_layer, wxCity_text);   
     text_layer_set_text(text_wxINFO_layer, wxInfo_text);   
-#ifdef PBL_PLATFORM_BASALT
+#ifndef PBL_PLATFORM_APLITE
     text_layer_set_text(text_wxICON_layer, wxIcon_text);       //\uf055
 #endif
 
@@ -1459,9 +1496,9 @@ static void main_window_load(Window *window) {
             
   window_set_background_color(window, GColorBlack);  
   Layer *window_layer = window_get_root_layer(window);
+  bounds = layer_get_bounds(window_layer);
 
-
- //Initialise screen = 144 x 168
+ //Initialise screen = 144 x 168 --> Now with get bounds because Chalk is 180x180
  // GRect(X, Y, W, H)
  
 #define Z1_minY  0 
@@ -1473,16 +1510,24 @@ static void main_window_load(Window *window) {
  // ZONE 1
        
   // Jour Date
-  text_date_layer = text_layer_create_ext(window_layer, GRect(0+1, 0, 110, 19), GColorWhite, GColorClear,
+  #if defined(PBL_ROUND)
+    text_date_layer = text_layer_create_ext(window_layer, GRect(0+1, 0, bounds.size.w, 19), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentCenter);   
+    // Week Number ISO8601 
+    text_week_layer = text_layer_create_ext(window_layer, GRect(bounds.size.w - 30 - 10, 20+45-19-1 , 30, 19), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentRight);  
+  #else 
+    text_date_layer = text_layer_create_ext(window_layer, GRect(0+1, 0, 110, 19), GColorWhite, GColorClear,
                                           fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentLeft);   
-  // Week Number ISO8601
-  text_week_layer = text_layer_create_ext(window_layer, GRect(118, 0 , 144-118, 19), GColorWhite, GColorClear,
+    // Week Number ISO8601
+    text_week_layer = text_layer_create_ext(window_layer, GRect(118, 0 , bounds.size.w-118, 19), GColorWhite, GColorClear,
                                           fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentRight);  
+  #endif
 
   //---------------------------------------------------------------------------
  // ZONE 2  
   // Heure
-  text_time_layer = text_layer_create_ext(window_layer, GRect(0, 20, 144, 45), GColorWhite, GColorClear,
+  text_time_layer = text_layer_create_ext(window_layer, GRect(0, 20, bounds.size.w, 45), GColorWhite, GColorClear,
                                           fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD),GTextAlignmentCenter);   
 
   //---------------------------------------------------------------------------
@@ -1494,11 +1539,11 @@ static void main_window_load(Window *window) {
                                              fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ZODIAC_28)), GTextAlignmentCenter);  
 
   // Zodiac text
-  text_zodiac_layer = text_layer_create_ext(window_layer, GRect(38, Z3_minY+2, 144-40-42, 35), GColorWhite, GColorClear,
+  text_zodiac_layer = text_layer_create_ext(window_layer, GRect(38, Z3_minY+2, bounds.size.w-40-42, 35), GColorWhite, GColorClear,
                                             fonts_get_system_font(FONT_KEY_GOTHIC_24), GTextAlignmentLeft);    
 
   // Moon Phase
-  text_zodMOON_layer = text_layer_create_ext(window_layer, GRect(144-40, Z3_minY+5, 40, 35), GColorWhite, GColorClear,
+  text_zodMOON_layer = text_layer_create_ext(window_layer, GRect(bounds.size.w-40, Z3_minY+5, 40, 35), GColorWhite, GColorClear,
                                              fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_MOONPHASE_28)), GTextAlignmentCenter);  
 
   #define bioW 33
@@ -1515,21 +1560,21 @@ static void main_window_load(Window *window) {
   text_bioINT_layer = text_layer_create_ext(window_layer, GRect(0+bioW+bioW, Z3_minY+20, bioW, 17), INT_COLOR, GColorClear,
                                             fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);   
   
-  biograph_layer = layer_create(GRect(100,Z3_minY+2,44,35));
+  biograph_layer = layer_create(GRect(100,Z3_minY+2, bounds.size.w-100, 35));
   layer_set_update_proc(biograph_layer, biograph_layer_update_callback);
   layer_add_child(window_layer, biograph_layer);
   
   // Weather         
-#ifdef PBL_PLATFORM_BASALT
-  text_wxICON_layer = text_layer_create_ext(window_layer, GRect(0, Z3_minY+6, wxI_w, 23), GColorWhite, GColorClear,
+#ifndef PBL_PLATFORM_APLITE
+  text_wxICON_layer = text_layer_create_ext(window_layer, GRect(0+PBL_IF_RECT_ELSE(0, 0+4), Z3_minY+6, wxI_w, 23), GColorWhite, GColorClear,
                                             fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_WEATHER_18)), GTextAlignmentCenter);  
 #endif
      
-  graph_wxRAIN_layer = layer_create(GRect(0+1,Z3_minY+6+23,44,8));
+  graph_wxRAIN_layer = layer_create(GRect(0+PBL_IF_RECT_ELSE(1, 1+4),Z3_minY+6+23,44,8));
   layer_set_update_proc(graph_wxRAIN_layer, graph_wxRAIN_layer_update_callback);
   layer_add_child(window_layer, graph_wxRAIN_layer);
 
-#ifdef PBL_PLATFORM_BASALT
+#ifndef PBL_PLATFORM_APLITE
   text_wxTEMP_layer = text_layer_create_ext(window_layer, GRect(0+wxI_w, Z3_minY, wxT_w, 38), GColorWhite, GColorClear,
                                             fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD), GTextAlignmentCenter);
 #else
@@ -1537,17 +1582,17 @@ static void main_window_load(Window *window) {
                                             fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD), GTextAlignmentCenter);
 #endif
   
-#ifdef PBL_PLATFORM_BASALT  
-  text_wxCITY_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w+wxI_w, Z3_minY, 144-wxT_w-wxI_w, 20), GColorWhite, GColorClear,
-                                            fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentRight);
+#ifndef PBL_PLATFORM_APLITE  
+  text_wxCITY_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w+wxI_w, Z3_minY, bounds.size.w-wxT_w-wxI_w, 20), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_18), PBL_IF_RECT_ELSE(GTextAlignmentRight, GTextAlignmentCenter));
     
-  text_wxINFO_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w+wxI_w-10, Z3_minY+20, 144-wxT_w-wxI_w+10, 20), GColorWhite, GColorClear,
-                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentRight);
+  text_wxINFO_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w+wxI_w-10, Z3_minY+20, bounds.size.w-wxT_w-wxI_w+10, 20), GColorWhite, GColorClear,
+                                            fonts_get_system_font(FONT_KEY_GOTHIC_14), PBL_IF_RECT_ELSE(GTextAlignmentRight, GTextAlignmentCenter));
 #else    
-  text_wxCITY_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w, Z3_minY,    144-wxT_w, 20), GColorWhite, GColorClear,
+  text_wxCITY_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w, Z3_minY,    bounds.size.w-wxT_w, 20), GColorWhite, GColorClear,
                                             fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentCenter);
     
-  text_wxINFO_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w, Z3_minY+20, 144-wxT_w, 20), GColorWhite, GColorClear,
+  text_wxINFO_layer = text_layer_create_ext(window_layer, GRect(0+wxT_w, Z3_minY+20, bounds.size.w-wxT_w, 20), GColorWhite, GColorClear,
                                             fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);
 #endif
   
@@ -1555,19 +1600,19 @@ static void main_window_load(Window *window) {
   // ZONE 4
   //
   
-  ag_back_layer = text_layer_create(GRect(0,Z4_minY+1,144,168-108));
+  ag_back_layer = text_layer_create(GRect(0, Z4_minY+1, bounds.size.w,bounds.size.h-108));
   text_layer_set_background_color(ag_back_layer, GColorClear);
   layer_add_child(window_layer, text_layer_get_layer(ag_back_layer));
   
   
   // Msg
-  text_msg_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY, 144, 22), GColorWhite, GColorClear,
+  text_msg_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY, bounds.size.w, 22), GColorWhite, GColorClear,
                                          fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GTextAlignmentCenter);
   
-  text_msg2_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY+20, 144, 21), GColorWhite, GColorClear,
+  text_msg2_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY+20, bounds.size.w, 21), GColorWhite, GColorClear,
                                           fonts_get_system_font(FONT_KEY_GOTHIC_18), GTextAlignmentCenter);
   
-  text_msg3_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY+20+20, 144, 17), GColorWhite, GColorClear,
+  text_msg3_layer = text_layer_create_ext(window_layer, GRect(0, Z4_minY+20+20, bounds.size.w, 17), GColorWhite, GColorClear,
                                       fonts_get_system_font(FONT_KEY_GOTHIC_14), GTextAlignmentCenter);
   
   line_layer = layer_create(layer_get_bounds(window_layer));
@@ -1672,7 +1717,7 @@ static void main_window_unload(Window *window) {
   text_layer_destroy(ag_back_layer);
     
   text_layer_destroy(text_wxINFO_layer);
-#ifdef PBL_PLATFORM_BASALT
+#ifndef PBL_PLATFORM_APLITE
   text_layer_destroy(text_wxICON_layer);
 #endif
   text_layer_destroy(text_wxCITY_layer);
